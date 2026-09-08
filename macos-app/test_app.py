@@ -4,6 +4,11 @@ ROOT=Path(__file__).resolve().parent
 spec=importlib.util.spec_from_file_location('runner',ROOT/'runner.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 assert m.targets('分享 https://weixin.qq.com/sph/abc。\nhttps://weixin.qq.com/sph/abc')==['https://weixin.qq.com/sph/abc']
 assert m.targets('bad input')==[]
+# 队列解析必须与 vx_link 一致：App 里原来另有一份正则，这三条都会带着错误的 URL 进内核。
+assert m.targets('https://www.douyin.com/jingxuan?modal_id=7681863407733165321')==['https://www.douyin.com/video/7681863407733165321']
+assert m.targets('看这个 https://www.bilibili.com/video/BV15PtJ6JEBh？')==['https://www.bilibili.com/video/BV15PtJ6JEBh']
+assert m.targets('【标题】https://x.com/user/status/1234567890】')==['https://x.com/user/status/1234567890']
+assert m.targets('#注释行\n\n https://youtu.be/x1 \n重复 https://youtu.be/x1')==['https://youtu.be/x1']
 with tempfile.TemporaryDirectory() as td:
  root=Path(td)
  bookmark=root/'share.webloc';bookmark.write_bytes(plistlib.dumps({'URL':'https://weixin.qq.com/sph/abc'}))

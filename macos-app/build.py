@@ -19,7 +19,7 @@ shutil.copy(ROOT/'downie_bridge.py',resources/'downie_bridge.py')
 shutil.copy(ROOT/'wx_bridge.py',resources/'wx_bridge.py')
 shutil.copy(ROOT/'视频号连接说明.html',resources/'视频号连接说明.html')
 shutil.copytree(ROOT/'external',resources/'external',dirs_exist_ok=True)
-for name in ('vx.py','vx_tiktok.py','vx_wxchannels.py','vx_browser_cookie.py','vx_kuaishou.py'):
+for name in ('vx.py','vx_link.py','vx_tiktok.py','vx_wxchannels.py','vx_browser_cookie.py','vx_kuaishou.py'):
  shutil.copy(BACKEND/name,resources/'backend'/name)
 shutil.copytree(BACKEND/'vendor',resources/'backend/vendor',dirs_exist_ok=True)
 iconWork=ROOT.parent/'work/macos-app'

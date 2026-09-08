@@ -1,8 +1,14 @@
 """App bridge: JSON on stdin, readable progress on stdout; never invokes a shell."""
-import html, plistlib, json, os, re, signal, subprocess, sys, threading, runpy, time
+import json, os, re, signal, subprocess, sys, threading, runpy, time
 from pathlib import Path
 import downie_bridge
-CORE = Path(__file__).resolve().parent / 'backend/vx.py'
+BACKEND = Path(__file__).resolve().parent / 'backend'
+# 链接解析只留 vx_link 一份。这里原来有一份自己的正则和标点表，
+# 和 vx_link.py、LinkTools.swift 三份互相不一致：抖音「精选」页不规范化、
+# 尾部的 ？】》… 会被吃进 URL，结果是 CLI 能下、App 下不了。
+sys.path.insert(0, str(BACKEND))
+import vx_link
+CORE = BACKEND / 'vx.py'
 child = None
 cancelled = False
 
@@ -19,6 +25,11 @@ def stop(signum, frame):
         except ProcessLookupError: pass
 
 def targets(text):
+    """输入区文本 → 待处理队列。本地文件按原路径入队，其余交给 vx_link 解析。
+
+    vx_link 负责剥中文标点、还原 HTML 转义、规范化平台链接
+    （如抖音 /jingxuan?modal_id=<id> → /video/<id>，否则 yt-dlp 报 Unsupported URL）。
+    认不出平台不算失败，原样入队交给内核通用兜底。"""
     found=[]
     for line in text.splitlines():
         line=line.strip()
@@ -27,19 +38,11 @@ def targets(text):
         try: local=p.is_file()
         except OSError: local=False
         if local:
-            if p.suffix.lower()=='.webloc':
-                try:
-                    item=plistlib.loads(p.read_bytes()).get('URL','')
-                    if item.startswith(('https://','http://')):found.append(item)
-                except Exception:pass
-            elif p.suffix.lower()=='.url':
-                for entry in p.read_text(errors='replace').splitlines():
-                    if entry.upper().startswith('URL=') and entry[4:].startswith(('https://','http://')):found.append(entry[4:])
-            else:found.append(str(p))
+            item=vx_link.read_file_link(p)
+            if item:found.append(vx_link.classify(item).url)
+            elif p.suffix.lower() not in ('.webloc','.url'):found.append(str(p))
             continue
-        line=html.unescape(line)
-        urls=re.findall(r'https?://[^\s<>"“”]+',line)
-        found.extend(u.rstrip('，。；！、）)]}') for u in urls)
+        found.extend(link.url for link in vx_link.parse_text(line))
     return list(dict.fromkeys(found))
 
 def command(url, config):

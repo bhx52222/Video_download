@@ -71,7 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         root.addArrangedSubview(row([fallback,force]))
         youtubeBackend.addItems(withTitles:["内核下载","失败后用 Downie 4","直接用 Downie 4"])
         root.addArrangedSubview(row([redownload,label("YouTube"),youtubeBackend]))
-        root.addArrangedSubview(row([collect,label("视频号：复制分享链接 → 自动加入输入区",size:12)]))
+        root.addArrangedSubview(row([collect,label("复制支持平台的链接 → 自动加入输入区",size:12)]))
         let note=label("视频号需分享链接与元宝登录态；快手支持公开作品链接。机器文字需核对。",size:12);note.textColor = .secondaryLabelColor;root.addArrangedSubview(note)
         folderLabel.stringValue=folder.path;folderLabel.lineBreakMode = .byTruncatingMiddle
         let folderRow=row([label("保存到"),folderLabel,button("更改…",#selector(chooseFolder)),button("打开目录",#selector(openFolder))]);root.addArrangedSubview(folderRow)
@@ -128,12 +128,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         return [p.string(forType:.string),p.string(forType:.URL),p.string(forType:.html)].compactMap{$0}.joined(separator:"\n")
     }
     func addLinks(_ links:[String]) {
-        let existing=Set(LinkTools.extract(input.string));let fresh=links.filter{!existing.contains($0)}
+        let existing=Set(LinkTools.extractAny(input.string));let fresh=links.filter{!existing.contains($0)}
         if !fresh.isEmpty {input.string += (input.string.isEmpty ? "" : "\n")+fresh.joined(separator:"\n");append("已加入 \(fresh.count) 条链接；点击开始下载时处理。\n")}
     }
     @objc func pasteLinks() {
-        let links=LinkTools.extract(clipboardText())
-        if links.isEmpty {alert("剪贴板里没有可识别的视频链接","视频号卡片或 #视频号 口令不等于分享网址。请在视频的分享菜单寻找“复制链接”；如果当前版本没有该选项，不能仅凭标题生成下载链接。")} else {addLinks(links)}
+        let links=LinkTools.extractAny(clipboardText())
+        if links.isEmpty {alert("剪贴板里没有网址","视频号卡片或 #视频号 口令不等于分享网址。请在视频的分享菜单寻找“复制链接”；如果当前版本没有该选项，不能仅凭标题生成下载链接。");return}
+        addLinks(links)
+        let unknown=LinkTools.unknownPlatform(links)
+        if !unknown.isEmpty {append("其中 \(unknown.count) 条不在已知平台列表内，将交给内核通用解析尝试，未必成功。\n")}
     }
     @objc func toggleCollection() {
         clipboardTimer?.invalidate();clipboardTimer=nil
@@ -144,6 +147,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 if count != self.clipboardChange {self.clipboardChange=count;self.addLinks(LinkTools.extract(self.clipboardText()))}
             }
             append("已开启链接收集：仅加入支持平台的网址，其他剪贴板内容不保存；不会自动下载。\n")
+            // 先复制链接、再勾选是常见顺序；只等下一次变化会让这一条永远收不到。
+            addLinks(LinkTools.extract(clipboardText()))
+        } else {
+            append("已停止链接收集。\n")
         }
     }
     @objc func clearInput() {input.string=""}
