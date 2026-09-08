@@ -12,7 +12,7 @@
 | 视频号无链接采集 | 本机服务启动/停止及状态区分已验证，历史记录与分享 URL 绑定有合成测试；真实卡片 → 链接 → 有效视频仍未完成。 |
 | ISAAC64 | 离线解码测试不等于真实加密作品验收，真实样本仍需另测。 |
 | NeatDownloadManager | 受控媒体直链下载通过；YouTube 页面只得到 HTML，未作为自动备用接入。 |
-| 链接解析统一 | App 队列改为调用 `vx_link`，与 CLI 同一份规则；`LinkTools.swift` 域名表与标点表对齐 `vx_link`，手动粘贴放行未知站点、自动收集仍只收已知平台。开发机 `scripts/run_tests.py` 完整通过，其中 `LinkTools` 经 swiftc 编译并通过 15 条断言（含仿冒域名与凭据 URL 拒绝）。`build.py` 在开发机构建成功，`App.swift` 的粘贴与收集改动随之通过 swiftc 编译，本地签名已重签。GUI 实际操作与真实链接下载尚未复验。 |
+| 链接解析统一 | App 队列改为调用 `vx_link`，与 CLI 同一份规则；`LinkTools.swift` 域名表与标点表对齐 `vx_link`，手动粘贴放行未知站点、自动收集仍只收已知平台。开发机 `scripts/run_tests.py` 完整通过，其中 `LinkTools` 经 swiftc 编译并通过 15 条断言（含仿冒域名与凭据 URL 拒绝）。`build.py` 在开发机构建成功，`App.swift` 的粘贴与收集改动随之通过 swiftc 编译，本地签名已重签。`scripts/verify_link_fix.py` 对构建产物复验通过：包内 `backend/vx_link.py` 与主源码 SHA-256 一致（`365458c2f55c0054…`），用包内 `runner.py` 跑 7 条改动前会出错的真实形态全部符合预期。剪贴板按钮与真实链接下载的界面实测尚未做。 |
 
 已保留 OCR 状态修复、快手 ID、OCR 区域、强制重抽帧、Cookie 提示和下载策略等有效改动。原作者/开发工具名称不是删除功能代码的依据。
 
