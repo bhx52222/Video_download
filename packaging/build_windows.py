@@ -6,7 +6,9 @@ sys.path.insert(0,str(ROOT/'macos-app'))
 from check_backend import require_current
 require_current()
 if sys.platform!='win32':raise SystemExit('Windows build host required')
-OUT=ROOT/'outputs/Shiying-Windows';R=OUT/'resources';R.mkdir(parents=True,exist_ok=True)
+# Keep dependency paths below legacy Windows installer path limits.
+OUT=Path(os.environ['RUNNER_TEMP'])/'sy' if os.environ.get('RUNNER_TEMP') else ROOT/'outputs/Shiying-Windows'
+R=OUT/'resources';R.mkdir(parents=True,exist_ok=True)
 CACHE=ROOT/'work/downloads';CACHE.mkdir(parents=True,exist_ok=True)
 provenance=[]
 def download(url,name):
@@ -51,4 +53,4 @@ shutil.copytree(ROOT/'docs',R/'docs',dirs_exist_ok=True)
 shutil.copy2(ROOT/'THIRD_PARTY_NOTICES.md',R/'THIRD_PARTY_NOTICES.md')
 (R/'provenance.json').write_text(json.dumps(provenance,indent=2))
 iscc=Path(os.environ.get('ISCC',r'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'))
-subprocess.run([str(iscc),str(ROOT/'windows-app/installer.iss')],check=True)
+subprocess.run([str(iscc),'/DBundleRoot='+str(OUT.resolve()),str(ROOT/'windows-app/installer.iss')],check=True)

@@ -1,4 +1,7 @@
 #define AppVersion "1.5.0"
+#ifndef BundleRoot
+#define BundleRoot "..\outputs\Shiying-Windows"
+#endif
 [Setup]
 AppId=Shiying.VideoDownloader
 AppName=拾影视频下载器
@@ -15,7 +18,7 @@ SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\Shiying.exe
 [Files]
-Source: "..\outputs\Shiying-Windows\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#BundleRoot}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 [Icons]
 Name: "{group}\拾影视频下载器"; Filename: "{app}\Shiying.exe"
 Name: "{autodesktop}\拾影视频下载器"; Filename: "{app}\Shiying.exe"; Tasks: desktopicon
