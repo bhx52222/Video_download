@@ -1,0 +1,10 @@
+# Optional speech recognition; large dependencies and first-use model downloads.
+funasr>=1.1
+modelscope
+torch
+torchaudio
+parakeet-mlx
+srt
+rich
+tqdm
+requests

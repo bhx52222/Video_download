@@ -1,0 +1,2 @@
+# Minimal runtime. ASR engines are optional; see requirements-asr.txt.
+truststore>=0.10

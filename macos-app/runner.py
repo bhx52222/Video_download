@@ -1,0 +1,128 @@
+"""App bridge: JSON on stdin, readable progress on stdout; never invokes a shell."""
+import html, plistlib, json, os, re, signal, subprocess, sys, threading, runpy, time
+from pathlib import Path
+import downie_bridge
+CORE = Path(__file__).resolve().parent / 'backend/vx.py'
+child = None
+cancelled = False
+
+def stop(signum, frame):
+    global cancelled
+    cancelled = True
+    if child and child.poll() is None:
+        pgid=child.pid
+        try: os.killpg(pgid, signal.SIGTERM)
+        except ProcessLookupError: return
+        try: child.wait(timeout=3)
+        except subprocess.TimeoutExpired: pass
+        try: os.killpg(pgid, signal.SIGKILL)
+        except ProcessLookupError: pass
+
+def targets(text):
+    found=[]
+    for line in text.splitlines():
+        line=line.strip()
+        if not line or line.startswith('#'):continue
+        p=Path(line.strip('"')).expanduser()
+        try: local=p.is_file()
+        except OSError: local=False
+        if local:
+            if p.suffix.lower()=='.webloc':
+                try:
+                    item=plistlib.loads(p.read_bytes()).get('URL','')
+                    if item.startswith(('https://','http://')):found.append(item)
+                except Exception:pass
+            elif p.suffix.lower()=='.url':
+                for entry in p.read_text(errors='replace').splitlines():
+                    if entry.upper().startswith('URL=') and entry[4:].startswith(('https://','http://')):found.append(entry[4:])
+            else:found.append(str(p))
+            continue
+        line=html.unescape(line)
+        urls=re.findall(r'https?://[^\s<>"“”]+',line)
+        found.extend(u.rstrip('，。；！、）)]}') for u in urls)
+    return list(dict.fromkeys(found))
+
+def command(url, config):
+    cmd=[sys.executable, '-B', '-u', str(CORE), url, '--lib', str(Path(config['folder']).expanduser()),
+         '--cookies', config.get('cookies','edge,chrome'), '--tiktok-backend',config.get('tiktok','direct')]
+    max_res=int(config.get('max_res',1080))
+    if max_res not in (720,1080,2160):raise ValueError('无效画质选项')
+    cmd+=['--max-res',str(max_res)]
+    if config.get('youtube_cookies'):cmd+=['--youtube-cookies']
+    mode=config.get('mode',0)
+    if mode==0:cmd+=['--download-only']
+    elif mode==2:cmd+=['--dual']
+    lang=config.get('language','auto')
+    if lang in ('zh','en'):cmd+=['--lang',lang]
+    if config.get('force'):cmd+=['--force']
+    if config.get('redownload'):cmd+=['--redownload']
+    return cmd
+
+def main():
+    global child
+    signal.signal(signal.SIGTERM,stop);signal.signal(signal.SIGINT,stop)
+    config=json.load(sys.stdin)
+    if config.get('youtube_backend','core') not in ('core','auto','downie'):raise ValueError('无效 YouTube 下载方式')
+    if config.get('tiktok','direct') not in ('direct','auto','tikwm'):raise ValueError('无效 TikTok 模式')
+    if config.get('cookies','edge,chrome') not in ('edge,chrome','chrome,edge','edge','chrome','none'):raise ValueError('无效浏览器选项')
+    queue=targets(config.get('text',''))
+    if not queue:print('没有找到有效链接或本地文件。',flush=True);return 2
+    folder=Path(config['folder']).expanduser();folder.mkdir(parents=True,exist_ok=True)
+    if not CORE.exists():print('App 内核文件缺失。',flush=True);return 2
+    # App 子进程不能共享内核内存；在父进程按同一套平台规则补足间隔。
+    policy=runpy.run_path(str(Path(__file__).resolve().parent/'backend/vx.py'))
+    previous={}
+    ok=0;failed=0
+    def execute(cmd):
+        global child
+        mask=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGTERM,signal.SIGINT})
+        try:
+            child=subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
+                text=True,errors='replace',start_new_session=True,bufsize=1)
+        finally:signal.pthread_sigmask(signal.SIG_SETMASK,mask)
+        for line in child.stdout:
+            clean=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',line)
+            print(clean.rstrip(),flush=True)
+        code=child.wait();child=None
+        return code
+
+    for index,url in enumerate(queue,1):
+        if cancelled:break
+        platform=policy.get('platform_of',lambda u:'unknown')(url)
+        gap=policy.get('PLATFORM_MIN_GAP',{}).get(platform,policy.get('DEFAULT_MIN_GAP',1.5))
+        deadline=previous.get(platform,0)+gap
+        if time.monotonic()<deadline:print(f'同平台间隔等待 {deadline-time.monotonic():.1f} 秒…',flush=True)
+        while not cancelled and time.monotonic()<deadline:time.sleep(max(0,min(.1,deadline-time.monotonic())))
+        if cancelled:break
+        print(f'\n━━ 任务 {index}/{len(queue)} ━━\n{url}',flush=True)
+        backend=config.get('youtube_backend','core') if downie_bridge.youtube_url(url) else 'core'
+        code=1 if backend=='downie' else execute(command(url,config))
+        if code and backend in ('auto','downie') and not cancelled:
+            token=config.get('handoff_token')
+            if not token:
+                print('Downie 备用需要由 App 启动，未发送下载任务。',flush=True)
+            else:
+                job=downie_bridge.make_job(url,folder,token)
+                print('@@VX_DOWNIE@@'+json.dumps(job,ensure_ascii=False),flush=True)
+                media=downie_bridge.wait_media(job,lambda:cancelled,lambda msg:print(msg,flush=True))
+                if media and not cancelled:
+                    print('Downie 已返回可读视频，继续校验并归档。',flush=True)
+                    follow=dict(config);follow['youtube_backend']='core'
+                    cmd=command(str(media),follow)+['--as','youtube','--source-url',url,'--title',media.stem,
+                        '--channel','Downie 备用下载','--tool','Downie 4','--note','媒体由 Downie 获取；画质遵循 Downie 的选择，非拾影画质上限。']
+                    code=execute(cmd)
+                    (Path(job['destination'])/'source.json').write_text(json.dumps({'url':url,'status':'imported' if code==0 else 'import_failed'},ensure_ascii=False))
+                elif not cancelled:
+                    print('Downie 未在等待期限内返回有效媒体；未标记成功。可稍后通过添加本地视频继续导入。',flush=True)
+        previous[platform]=time.monotonic()
+        if cancelled:break
+        if code==0:ok+=1
+        else:failed+=1
+    if cancelled:
+        print(f'\n已取消。完成 {ok} 条，失败 {failed} 条；已下载的文件保留。',flush=True);return 130
+    print(f'\n全部处理结束：完成或已存在 {ok} 条，失败 {failed} 条。\n结果目录：{folder}',flush=True)
+    return 1 if failed else 0
+
+if __name__=='__main__':
+    try: sys.exit(main())
+    except Exception as exc: print(f'无法继续：{type(exc).__name__}: {exc}',flush=True);sys.exit(2)
