@@ -67,13 +67,29 @@ with tempfile.TemporaryDirectory() as td:
     check("describe 标记为打包", rt.describe()["bundled"], True)
 
     # ── 3. 包内没有的工具退回 PATH，不硬失败 ──
-    check("缺失工具返回裸名字", rt.tool("yt-dlp"), "yt-dlp")
-    check("不可执行的不算数", rt.tool("ffprobe"), "ffprobe")
+    #
+    # 这几条必须把 PATH 指到一个空目录再断言。上一版直接断言返回裸名字，
+    # 结果在装了全套环境的 Mac 上失败：机器上真有 ~/.vx/bin/yt-dlp 和
+    # /opt/homebrew/bin/ffprobe，tool() 找到并返回它们——那正是设计要的行为，
+    # 是断言依赖了"跑测试的机器上没装这些工具"。测试不能这样写。
+    empty = Path(td) / "empty-path"
+    empty.mkdir()
+    saved_path = os.environ.get("PATH", "")
+    os.environ["PATH"] = str(empty)
     try:
-        rt.tool("绝对不存在的工具", required=True)
-        fail.append("required=True 应该抛 FileNotFoundError，但没抛")
-    except FileNotFoundError:
-        pass
+        check("PATH 里也没有时返回裸名字", rt.tool("yt-dlp"), "yt-dlp")
+        check("包内不可执行的不算数", rt.tool("ffprobe"), "ffprobe")
+        try:
+            rt.tool("绝对不存在的工具", required=True)
+            fail.append("required=True 应该抛 FileNotFoundError，但没抛")
+        except FileNotFoundError:
+            pass
+    finally:
+        os.environ["PATH"] = saved_path
+
+    # 不管机器上装没装，都不能把包内那个不可执行的文件当成工具用。
+    check("不可执行的文件永远不被选中",
+          rt.tool("ffprobe") != str(root / "bin/ffprobe"), True)
 
     # ── 4. 状态目录可单独指定（测试和多用户场景要用）──
     with tempfile.TemporaryDirectory() as sd:
