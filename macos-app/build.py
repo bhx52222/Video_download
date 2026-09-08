@@ -30,9 +30,33 @@ if not (iconWork/'App.icns').exists():
  subprocess.run(['iconutil','-c','icns',str(iconWork/'App.iconset'),'-o',str(iconWork/'App.icns')],check=True)
 shutil.copy(iconWork/'App.icns',resources/'App.icns')
 shutil.copy(ROOT/'使用说明.html',resources/'使用说明.html')
+# 自带运行时（一体化包）。没组装过就照旧出依赖本机 ~/.vx 的版本，
+# 不因此让构建失败——两种包都要能出。Runtime.swift 按包内有没有
+# python/bin/python3 自行判断走哪条路。
+runtime=ROOT.parent/'work/runtime'
+bundled=(runtime/'python/bin/python3').is_file()
+# 先清干净。上一次构建留下的 runtime/ 不删，会出两种错：切回依赖环境的版本时
+# 包里还带着旧运行时，以及重新组装后被删掉的文件仍留在包内。
+if (resources/'runtime').exists():
+ shutil.rmtree(resources/'runtime')
+if bundled:
+ # symlinks=True 必须带：Python 发行版里 python3 → python3.12 之类是符号链接，
+ # 实体化会让体积翻倍，还可能让相对定位失效。
+ shutil.copytree(runtime,resources/'runtime',symlinks=True)
 info={'CFBundleExecutable':'Shiying','CFBundleIdentifier':'local.beibei.shiying.preview','CFBundleName':'拾影视频下载器','CFBundleDisplayName':'拾影视频下载器','CFBundlePackageType':'APPL','CFBundleShortVersionString':'1.4.1','CFBundleVersion':'6','CFBundleIconFile':'App','LSMinimumSystemVersion':'14.0','NSHighResolutionCapable':True,'NSPrincipalClass':'NSApplication'}
 with (contents/'Info.plist').open('wb') as f:plistlib.dump(info,f)
-for cache in resources.rglob('__pycache__'):
- shutil.rmtree(cache)
+# 只清我们自己代码产生的缓存。runtime/ 里 site-packages 的 __pycache__ 是
+# 上游装出来的，删了只会让首次启动变慢，而且那底下有上万个文件，遍历很费时。
+for folder in (resources,resources/'backend'):
+ for cache in folder.glob('__pycache__'):
+  shutil.rmtree(cache)
 subprocess.run(['codesign','--force','--deep','--sign','-',str(APP)],check=True)
 print(APP)
+if bundled:
+ manifest=json.loads((runtime/'manifest.json').read_text())
+ total=sum(f.stat().st_size for f in APP.rglob('*') if f.is_file())
+ print(f"一体化包：自带 Python {manifest['python']}、yt-dlp {manifest['yt_dlp']}、"
+       f"ffmpeg 及 {len(manifest['ffmpeg_libs'])} 个依赖库，共 {total/1024/1024:.0f} MB")
+ print('验证：python3 scripts/verify_bundle.py')
+else:
+ print('依赖本机 ~/.vx 的版本。要出一体化包先跑 python3 scripts/bundle_runtime.py')
