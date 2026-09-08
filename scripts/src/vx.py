@@ -853,7 +853,7 @@ def _ocr_pass(frames, roi):
     B = 40
     for i in range(0, len(frames), B):
         batch = frames[i:i + B]
-        r = run(([sys.executable] if os.name == "nt" else []) + [str(VISIONOCR), "--roi", roi] + [str(p) for _, p in batch])
+        r = run(([sys.executable, "-X", "utf8", "-B"] if os.name == "nt" else []) + [str(VISIONOCR), "--roi", roi] + [str(p) for _, p in batch])
         if r.returncode != 0:
             err = (r.stderr or "").strip().splitlines()
             log(f"Vision OCR 退出码 {r.returncode}" + (f"：{err[-1][:120]}" if err else ""), "!")
@@ -1336,7 +1336,7 @@ def finish_pipeline(url, meta, outdir, video, args, lib):
             # 这里必须直接赋值。用 setdefault 的话，键已经存在且为 None，
             # 不会被覆盖——上一轮抖音那条 engine 就是这么变空的。
             meta["text"]["engine"] = ("funasr"
-                if guess_lang(meta, args.lang) == "zh" else "parakeet")
+                if guess_lang(meta, args.lang) == "zh" else ("faster-whisper" if os.name == "nt" else "parakeet"))
         # 跳过转写不等于跳过质检。已有字幕同样要过闸门，
         # 否则一份垃圾字幕只要落了盘就再也不会被复查。
         segs_existing = []
