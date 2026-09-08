@@ -13,7 +13,7 @@ Apple Silicon macOS 视频下载、字幕提取、语音转写和画面文字识
 3. 粘贴单条作品链接或分享文字，选择“仅下载”“下载并转写”或“下载、转写和 OCR”，确认保存目录后开始。
 4. 也可添加本地视频。重新下载会保留旧媒体备份；取消停止拾影自身处理。
 
-[使用说明](docs/USAGE.md) · [安装与构建](docs/BUILD.md) · [验证与限制](docs/VALIDATION.md) · [第三方组件](THIRD_PARTY_NOTICES.md)
+[使用说明](docs/USAGE.md) · [安装与构建](docs/BUILD.md) · [验证与限制](docs/VALIDATION.md) · [持续升级](docs/UPGRADE.md) · [第三方组件](THIRD_PARTY_NOTICES.md)
 
 ## 当前能力
 
