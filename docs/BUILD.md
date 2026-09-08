@@ -1,5 +1,7 @@
 # 安装与构建
 
+只想使用已下载的 App？请先阅读[面向使用者的环境配置说明](ENVIRONMENT.md)，不需要重新构建 App。
+
 ## 条件
 
 macOS 14 或以上、Apple Silicon、Xcode Command Line Tools。App 是本地签名测试包，未公证。运行环境使用 `~/.vx/venv/bin/python`（Python 3.12）、FFmpeg、yt-dlp、可选 Vision OCR / ASR；其他电脑需要单独安装。
@@ -8,7 +10,7 @@ macOS 14 或以上、Apple Silicon、Xcode Command Line Tools。App 是本地签
 
 ```bash
 xcode-select --install
-brew install uv ffmpeg
+brew install uv ffmpeg deno
 bash scripts/install_runtime.sh
 ```
 

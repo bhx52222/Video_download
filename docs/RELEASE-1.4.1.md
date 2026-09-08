@@ -1,5 +1,7 @@
 # 拾影 1.4.1 测试版
 
+> **下载前必读：此 App 不包含 `~/.vx`、Python、FFmpeg、yt-dlp 和完整转写环境。新电脑仅下载 App 无法直接执行下载任务。请先按[环境配置说明](https://github.com/bhx52222/Video_download/blob/main/docs/ENVIRONMENT.md)安装并检查依赖。全新 Mac 安装流程尚未完整验收。**
+
 新增快手公开页面解析，修复分享短链接无法下载的问题；整理源码、构建脚本、维护测试和当前说明文档。
 
 - 原生 AppKit 界面与 Python 内核。

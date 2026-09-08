@@ -4,9 +4,11 @@ Apple Silicon macOS 视频下载、字幕提取、语音转写和画面文字识
 
 **当前版本：1.4.1 测试版。** [下载 App](https://github.com/bhx52222/Video_download/releases/tag/v1.4.1)。这是依赖本机运行环境的测试包，未包含 Python、FFmpeg 和全部模型；采用本地签名，未经过 Apple 公证。
 
+> **下载前必读：当前 App 不包含 `~/.vx` 运行环境。新电脑必须先安装 Python 环境、FFmpeg、yt-dlp 等，否则无法启动下载任务。请先阅读[环境配置说明](docs/ENVIRONMENT.md)。**
+
 ## 使用
 
-1. 按[安装与构建](docs/BUILD.md)准备运行环境；原来已使用拾影的 Mac 通常已有此环境。
+1. 按[环境配置说明](docs/ENVIRONMENT.md)准备运行环境；原来已使用拾影的 Mac 通常已有此环境。
 2. 解压 Releases 中的 `Shiying-1.4.1-macOS-arm64.zip`，打开 App。
 3. 粘贴单条作品链接或分享文字，选择“仅下载”“下载并转写”或“下载、转写和 OCR”，确认保存目录后开始。
 4. 也可添加本地视频。重新下载会保留旧媒体备份；取消停止拾影自身处理。
