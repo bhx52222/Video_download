@@ -168,12 +168,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if wxPanel == nil {wxPanel=WxPanel(onLink:{[weak self] link in self?.addLinks([link])})}
         wxPanel?.show()
     }
-    @objc func about() {alert("拾影 · 视频下载器 1.4.1 测试版","为这台 Mac 构建，复用本机 ~/.vx 环境。支持链接队列、下载、转写与 OCR。\n第三方代码来源及许可见应用帮助。")}
+    @objc func about() {alert("拾影 · 视频下载器 1.5 测试版","为这台 Mac 构建，内置独立运行环境。支持链接队列、下载、转写与 OCR。\n第三方代码来源及许可见应用帮助。")}
     @objc func runTask() {
         guard task == nil else {return}
         guard !input.string.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else {alert("请先添加链接","也可以选择一个本地视频。");return}
-        let python=FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".vx/venv/bin/python")
-        guard FileManager.default.isExecutableFile(atPath:python.path),let runner=Bundle.main.url(forResource:"runner",withExtension:"py") else {alert("处理环境不可用","此版本需要本机已安装的 ~/.vx 运行环境。");return}
+        let python=Bundle.main.resourceURL!.appendingPathComponent("runtime/bin/python3")
+        guard FileManager.default.isExecutableFile(atPath:python.path),let runner=Bundle.main.url(forResource:"runner",withExtension:"py") else {alert("处理环境不可用","安装包内运行环境缺失，请重新下载完整安装包。");return}
         let cookies=["edge,chrome","chrome,edge","edge","chrome","none"]
         handoffToken=UUID().uuidString
         let payload:[String:Any]=["youtube_backend":["core","auto","downie"][youtubeBackend.indexOfSelectedItem],"handoff_token":handoffToken,"text":input.string,"folder":folder.path,"mode":mode.indexOfSelectedItem,"cookies":cookies[cookie.indexOfSelectedItem],"language":["auto","zh","en"][language.indexOfSelectedItem],"tiktok":fallback.state == .on ? "tikwm" : "direct","force":force.state == .on,"redownload":redownload.state == .on,"max_res":[1080,720,2160][quality.indexOfSelectedItem],"youtube_cookies":youtubeCookies.state == .on]

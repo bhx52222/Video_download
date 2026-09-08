@@ -30,9 +30,12 @@ except Exception:
     TLS_CONTEXT = ssl.create_default_context()
     HAS_TRUSTSTORE = False
 
-VXHOME = Path.home() / ".vx"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from vx_runtime import configure
+configure()
+VXHOME = Path(os.environ.get("VX_HOME", str(Path.home() / ".vx")))
 DEFAULT_LIB = Path(os.environ.get("VX_LIB", str(Path.home() / "VideoExtract")))
-VISIONOCR = VXHOME / "bin" / "visionocr"
+VISIONOCR = Path(os.environ.get("VX_BIN", str(VXHOME / "bin"))) / ("visionocr.py" if os.name == "nt" else "visionocr")
 
 CN_HOSTS = ("douyin.com", "bilibili.com", "b23.tv", "xiaohongshu.com", "xhslink",
             "kuaishou.com", "weibo.c", "ixigua.com", "zhihu.com", "qq.com",
@@ -737,6 +740,11 @@ def asr_funasr(wav):
     return []
 
 def asr_parakeet(wav):
+    if os.name == "nt":
+        from faster_whisper import WhisperModel
+        model = WhisperModel("small", device="cpu", compute_type="int8")
+        rows, _ = model.transcribe(str(wav), language="en", vad_filter=True)
+        return [(float(s.start), float(s.end), s.text) for s in rows]
     from parakeet_mlx import from_pretrained
     model = from_pretrained("mlx-community/parakeet-tdt-0.6b-v2")
     res = model.transcribe(str(wav))
@@ -781,7 +789,7 @@ def transcribe(wav, lang, engine):
     dur = time.time() - t0
     has_ts = any(e > 0 for _, e, _ in segs)
     log(f"转写完成 {len(segs)} 段，用时 {dur:.0f}s，时间戳：{'有' if has_ts else '无'}")
-    return segs, engine
+    return segs, ("faster-whisper" if os.name == "nt" and engine == "parakeet" else engine)
 
 # ---------------------------------------------------------------- 抽帧
 
@@ -845,7 +853,7 @@ def _ocr_pass(frames, roi):
     B = 40
     for i in range(0, len(frames), B):
         batch = frames[i:i + B]
-        r = run([str(VISIONOCR), "--roi", roi] + [str(p) for _, p in batch])
+        r = run(([sys.executable] if os.name == "nt" else []) + [str(VISIONOCR), "--roi", roi] + [str(p) for _, p in batch])
         if r.returncode != 0:
             err = (r.stderr or "").strip().splitlines()
             log(f"Vision OCR 退出码 {r.returncode}" + (f"：{err[-1][:120]}" if err else ""), "!")

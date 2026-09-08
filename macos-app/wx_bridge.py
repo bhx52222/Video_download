@@ -122,7 +122,7 @@ def serve(state,port):
     with socket.socket() as sock:
         try:sock.bind(('127.0.0.1',port))
         except OSError as exc:raise BridgeError('port_busy','API 端口已占用，请直接检查连接或更换端口') from exc
-    root=ROOT/'external/wx_channels_download';binary=root/'wx_video_download'
+    root=ROOT/'external/wx_channels_download';binary=root/('wx_video_download.exe' if os.name == 'nt' else 'wx_video_download')
     manifest=json.loads((root/'provenance.json').read_text())
     if hashlib.sha256(binary.read_bytes()).hexdigest()!=manifest['binary_sha256']:
         raise BridgeError('helper_changed','连接组件校验失败，请重新构建或恢复原始组件')

@@ -19,7 +19,7 @@ with tempfile.TemporaryDirectory() as td:
  assert '--youtube-cookies' in cmd and cmd[cmd.index('--max-res')+1]=='2160'
  plain=root/'a $(touch never).mp4'
  subprocess.run(['ffmpeg','-v','error','-f','lavfi','-i','color=c=blue:s=320x240:d=1','-c:v','libx264',str(plain)],check=True)
- backend=Path(os.environ.get('SHIYING_TEST_APP',str(ROOT.parent/'outputs/拾影视频下载器-1.4.1测试版.app')))/'Contents/Resources/runner.py'
+ backend=Path(os.environ.get('SHIYING_TEST_APP',str(ROOT.parent/'outputs/拾影视频下载器-1.5独立版.app')))/'Contents/Resources/runner.py'
  payload={'text':str(plain),'folder':str(root/'lib'),'mode':0,'cookies':'none'}
  r=subprocess.run([sys.executable,"-B",str(backend)],input=json.dumps(payload),capture_output=True,text=True,timeout=60)
  assert r.returncode==0,r.stdout+r.stderr

@@ -1,0 +1,38 @@
+name: Windows standalone installer
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/standalone-packaging]
+    paths: ['windows-app/**', 'packaging/**', 'scripts/src/**', 'macos-app/**', '.github/workflows/windows-standalone.yml']
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Build installer
+        run: python packaging/build_windows.py
+      - name: Install into a fresh directory and verify bundled runtime
+        shell: pwsh
+        run: |
+          $install = Join-Path $env:RUNNER_TEMP 'Shiying smoke'
+          $p = Start-Process -FilePath 'outputs/Shiying-1.5-Windows-x64-Setup.exe' -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$install`"") -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw 'Installer failed' }
+          & "$install/resources/runtime/python.exe" -B "$install/resources/smoke_windows.py"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed runtime smoke failed' }
+          $app = Start-Process -FilePath "$install/Shiying.exe" -PassThru
+          Start-Sleep -Seconds 4
+          if ($app.HasExited) { throw 'GUI exited unexpectedly' }
+          Stop-Process -Id $app.Id
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Shiying-Windows-x64-installer
+          path: outputs/*Setup.exe

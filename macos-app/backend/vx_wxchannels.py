@@ -1,3 +1,4 @@
+import os
 """Share URL adapter based on researched Tencent API flows in:
 ltaoo/wx_channels_download pkg/scraper/wxchannels/yuanbao.go,
 oliver-zch/wx-video-channel-download internal/service/sph.go.
@@ -130,7 +131,7 @@ def fetch_profile(url, browsers='edge,chrome'):
 
 
 def decrypt_file(path, key):
-    binary = Path.home() / '.vx/bin/vx-wx-decrypt'
+    binary = Path(os.environ.get('VX_BIN', str(Path.home()/'.vx/bin'))) / ('vx-wx-decrypt.exe' if os.name == 'nt' else 'vx-wx-decrypt')
     if not binary.exists():
         raise ValueError('缺少 vx-wx-decrypt；运行 scripts/17_install_wx_share.sh')
     result = subprocess.run([str(binary)], input=json.dumps({'path': str(path), 'key': key}),

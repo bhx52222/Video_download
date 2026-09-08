@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT.parent / 'scripts/src'
-FILES = ('vx.py', 'vx_link.py', 'vx_tiktok.py', 'vx_wxchannels.py', 'vx_browser_cookie.py','vx_kuaishou.py', 'vendor/wxdecrypt/main.go', 'vendor/wxdecrypt/decrypt.go', 'vendor/wxdecrypt/LICENSE', 'vendor/wxdecrypt/NOTICE.md')
+FILES = ('vx_runtime.py', 'vx.py', 'vx_link.py', 'vx_tiktok.py', 'vx_wxchannels.py', 'vx_browser_cookie.py','vx_kuaishou.py', 'vendor/wxdecrypt/main.go', 'vendor/wxdecrypt/decrypt.go', 'vendor/wxdecrypt/LICENSE', 'vendor/wxdecrypt/NOTICE.md')
 
 
 def compare(source=SOURCE, snapshot=ROOT / 'backend'):

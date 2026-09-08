@@ -46,7 +46,7 @@ final class WxPanel: NSObject {
     }
     func launch(_ args:[String], completion:@escaping ([String:Any])->Void) {
         guard request == nil,let script=Bundle.main.url(forResource:"wx_bridge",withExtension:"py"),let n=selectedPort() else{return}
-        let p=Process(),pipe=Pipe();p.executableURL=FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".vx/venv/bin/python")
+        let p=Process(),pipe=Pipe();p.executableURL=Bundle.main.resourceURL!.appendingPathComponent("runtime/bin/python3")
         p.arguments=["-B",script.path]+args+["--port",String(n)];p.standardOutput=pipe;p.standardError=FileHandle.nullDevice
         request=p;refresh.isEnabled=false;recent.isEnabled=false;add.isEnabled=false;connect.isEnabled=false;port.isEnabled=false
         statusLabel.stringValue="正在请求连接服务…"
@@ -84,7 +84,7 @@ final class WxPanel: NSObject {
             let log=state.appendingPathComponent("service-\(Int(Date().timeIntervalSince1970)).log")
             FileManager.default.createFile(atPath:log.path,contents:nil)
             let output=try FileHandle(forWritingTo:log)
-            let p=Process();p.executableURL=FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".vx/venv/bin/python")
+            let p=Process();p.executableURL=Bundle.main.resourceURL!.appendingPathComponent("runtime/bin/python3")
             p.arguments=["-B",script.path,"serve","--port",String(n),"--state",state.path];p.standardOutput=output;p.standardError=output;p.standardInput=FileHandle.nullDevice
             p.terminationHandler={proc in
                 try? output.close()

@@ -8,6 +8,8 @@ BACKEND = Path(__file__).resolve().parent / 'backend'
 # 尾部的 ？】》… 会被吃进 URL，结果是 CLI 能下、App 下不了。
 sys.path.insert(0, str(BACKEND))
 import vx_link
+from vx_runtime import configure
+configure(Path(__file__).resolve().parent)
 CORE = BACKEND / 'vx.py'
 child = None
 cancelled = False
@@ -16,6 +18,9 @@ def stop(signum, frame):
     global cancelled
     cancelled = True
     if child and child.poll() is None:
+        if os.name == 'nt':
+            subprocess.run(['taskkill','/PID',str(child.pid),'/T','/F'],capture_output=True)
+            return
         pgid=child.pid
         try: os.killpg(pgid, signal.SIGTERM)
         except ProcessLookupError: return
@@ -65,7 +70,7 @@ def main():
     global child
     signal.signal(signal.SIGTERM,stop);signal.signal(signal.SIGINT,stop)
     config=json.load(sys.stdin)
-    if config.get('youtube_backend','core') not in ('core','auto','downie'):raise ValueError('无效 YouTube 下载方式')
+    if config.get('youtube_backend','core') not in ('core','auto','downie','idm'):raise ValueError('无效 YouTube 下载方式')
     if config.get('tiktok','direct') not in ('direct','auto','tikwm'):raise ValueError('无效 TikTok 模式')
     if config.get('cookies','edge,chrome') not in ('edge,chrome','chrome,edge','edge','chrome','none'):raise ValueError('无效浏览器选项')
     queue=targets(config.get('text',''))
@@ -78,11 +83,12 @@ def main():
     ok=0;failed=0
     def execute(cmd):
         global child
-        mask=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGTERM,signal.SIGINT})
+        mask=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGTERM,signal.SIGINT}) if os.name != 'nt' else None
         try:
             child=subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
-                text=True,errors='replace',start_new_session=True,bufsize=1)
-        finally:signal.pthread_sigmask(signal.SIG_SETMASK,mask)
+                text=True,encoding='utf-8',errors='replace',start_new_session=os.name != 'nt',creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0,bufsize=1)
+        finally:
+            if mask is not None:signal.pthread_sigmask(signal.SIG_SETMASK,mask)
         for line in child.stdout:
             clean=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',line)
             print(clean.rstrip(),flush=True)
@@ -99,8 +105,17 @@ def main():
         if cancelled:break
         print(f'\n━━ 任务 {index}/{len(queue)} ━━\n{url}',flush=True)
         backend=config.get('youtube_backend','core') if downie_bridge.youtube_url(url) else 'core'
-        code=1 if backend=='downie' else execute(command(url,config))
-        if code and backend in ('auto','downie') and not cancelled:
+        code=1 if backend in ('downie','idm') else execute(command(url,config))
+        if os.name == 'nt' and code and backend in ('auto','idm') and not cancelled:
+            import idm_bridge
+            try:
+                media, metadata=idm_bridge.download(url,config,policy,lambda:cancelled,lambda m:print(m,flush=True))
+                if media and not cancelled:
+                    cmd=command(str(media),config)+['--as','youtube','--source-url',url,'--title',metadata.get('title') or media.stem,'--channel','IDM 备用下载','--tool','IDM']
+                    code=execute(cmd)
+                    (media.parent/'source.json').write_text(json.dumps({'url':url,'status':'imported' if code==0 else 'import_failed'}),encoding='utf-8')
+            except Exception as e:print('IDM 未完成：'+str(e),flush=True)
+        if os.name != 'nt' and code and backend in ('auto','downie') and not cancelled:
             token=config.get('handoff_token')
             if not token:
                 print('Downie 备用需要由 App 启动，未发送下载任务。',flush=True)
