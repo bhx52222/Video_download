@@ -1,0 +1,8 @@
+{
+  "tag": "20260901",
+  "python": "3.12.14",
+  "name": "cpython-3.12.14+20260901-aarch64-apple-darwin-install_only.tar.gz",
+  "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260901/cpython-3.12.14%2B20260901-aarch64-apple-darwin-install_only.tar.gz",
+  "sha256": "3ee3ee547cedfeb7c2b16b2b7156039f7b470bb8f857e226fd3d2eb11db83c76",
+  "size": 25135464
+}
