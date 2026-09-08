@@ -10,6 +10,11 @@ def configure(resources=None):
     bundled = resources / 'runtime'
     if not bundled.is_dir():
         return False
+    # Embedded Python ignores environment UTF-8 flags; configure actual streams.
+    if os.name == 'nt':
+        for stream in (sys.stdin, sys.stdout, sys.stderr):
+            if hasattr(stream, 'reconfigure'):
+                stream.reconfigure(encoding='utf-8', errors='replace')
     data = (Path(os.environ.get('LOCALAPPDATA', str(Path.home()))) / 'Shiying' if os.name == 'nt'
             else Path.home() / 'Library/Application Support/拾影')
     data.mkdir(parents=True, exist_ok=True)

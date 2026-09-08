@@ -66,7 +66,7 @@ class Shiying : Form {
         if(running!=null)return;log.Clear();
         var payload=new Dictionary<string,object>{{"text",input.Text},{"folder",folder.Text},{"mode",mode.SelectedIndex},{"max_res",new[]{720,1080,2160}[quality.SelectedIndex]},{"cookies",new[]{"edge,chrome","chrome,edge","edge","chrome","none"}[cookies.SelectedIndex]},{"youtube_backend",new[]{"core","auto","idm"}[strategy.SelectedIndex]},{"language",new[]{"auto","zh","en"}[language.SelectedIndex]},{"force",force.Checked},{"redownload",redownload.Checked},{"tiktok",tikwm.Checked?"auto":"direct"}};
         try{
-            var psi=new ProcessStartInfo(Path.Combine(root,"runtime","python.exe"),"-B -u "+Quote(Path.Combine(root,"runner.py"))){UseShellExecute=false,CreateNoWindow=true,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,StandardOutputEncoding=Encoding.UTF8,StandardErrorEncoding=Encoding.UTF8,WorkingDirectory=root};
+            var psi=new ProcessStartInfo(Path.Combine(root,"runtime","python.exe"),"-X utf8 -B -u "+Quote(Path.Combine(root,"runner.py"))){UseShellExecute=false,CreateNoWindow=true,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,StandardOutputEncoding=Encoding.UTF8,StandardErrorEncoding=Encoding.UTF8,WorkingDirectory=root};
             psi.EnvironmentVariables["PYTHONUTF8"]="1";psi.EnvironmentVariables["PYTHONDONTWRITEBYTECODE"]="1";
             running=new Process(){StartInfo=psi};running.OutputDataReceived+=(s,e)=>Print(e.Data);running.ErrorDataReceived+=(s,e)=>Print(e.Data);running.Start();running.BeginOutputReadLine();running.BeginErrorReadLine();running.StandardInput.Write(json.Serialize(payload));running.StandardInput.Close();start.Enabled=false;cancel.Enabled=true;
             var proc=running;await Task.Run(()=>proc.WaitForExit());Print("任务进程退出码："+proc.ExitCode);
@@ -86,6 +86,6 @@ class WxWindow:Form {
         FormClosed+=(s,e)=>{StopService();};
     }
     void StopService(){if(service!=null&&!service.HasExited)Process.Start(new ProcessStartInfo("taskkill.exe","/PID "+service.Id+" /T /F"){UseShellExecute=false,CreateNoWindow=true}).WaitForExit();}
-    ProcessStartInfo Info(string args,bool capture){return new ProcessStartInfo(Path.Combine(root,"runtime","python.exe"),"-B "+Shiying.Quote(Path.Combine(root,"wx_bridge.py"))+" "+args) {UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=capture,RedirectStandardError=capture,StandardOutputEncoding=capture?Encoding.UTF8:null,WorkingDirectory=root};}
+    ProcessStartInfo Info(string args,bool capture){return new ProcessStartInfo(Path.Combine(root,"runtime","python.exe"),"-X utf8 -B "+Shiying.Quote(Path.Combine(root,"wx_bridge.py"))+" "+args) {UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=capture,RedirectStandardError=capture,StandardOutputEncoding=capture?Encoding.UTF8:null,WorkingDirectory=root};}
     async Task<string> Call(string args){try{return await Task.Run(()=>{using(var p=Process.Start(Info(" "+args,true))){string s=p.StandardOutput.ReadToEnd();string e=p.StandardError.ReadToEnd();p.WaitForExit();return s.Length>0?s:e;}});}catch(Exception e){return e.Message;}}
 }

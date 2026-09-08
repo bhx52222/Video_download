@@ -26,7 +26,7 @@ jobs:
           $install = Join-Path $env:RUNNER_TEMP 'Shiying smoke'
           $p = Start-Process -FilePath 'outputs/Shiying-1.5-Windows-x64-Setup.exe' -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$install`"") -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw 'Installer failed' }
-          & "$install/resources/runtime/python.exe" -B "$install/resources/smoke_windows.py"
+          & "$install/resources/runtime/python.exe" -X utf8 -B "$install/resources/smoke_windows.py"
           if ($LASTEXITCODE -ne 0) { throw 'Installed runtime smoke failed' }
           $app = Start-Process -FilePath "$install/Shiying.exe" -PassThru
           Start-Sleep -Seconds 4

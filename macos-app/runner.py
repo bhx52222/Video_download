@@ -51,7 +51,7 @@ def targets(text):
     return list(dict.fromkeys(found))
 
 def command(url, config):
-    cmd=[sys.executable, '-B', '-u', str(CORE), url, '--lib', str(Path(config['folder']).expanduser()),
+    cmd=[sys.executable, '-X', 'utf8', '-B', '-u', str(CORE), url, '--lib', str(Path(config['folder']).expanduser()),
          '--cookies', config.get('cookies','edge,chrome'), '--tiktok-backend',config.get('tiktok','direct')]
     max_res=int(config.get('max_res',1080))
     if max_res not in (720,1080,2160):raise ValueError('无效画质选项')
