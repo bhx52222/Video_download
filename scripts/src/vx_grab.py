@@ -7,8 +7,12 @@
 import json, os, subprocess, sys
 from pathlib import Path
 
-STORE = Path.home() / ".vx" / "captures.jsonl"
-VX = Path.home() / ".vx" / "bin" / "vx"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import vx_runtime
+
+# 候选清单是可写状态，命令入口是运行时。一体化包里这两者不在同一处。
+STORE = vx_runtime.state_home() / "captures.jsonl"
+VX = Path(vx_runtime.tool("vx"))
 
 def load():
     if not STORE.exists():

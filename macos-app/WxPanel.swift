@@ -46,8 +46,8 @@ final class WxPanel: NSObject {
     }
     func launch(_ args:[String], completion:@escaping ([String:Any])->Void) {
         guard request == nil,let script=Bundle.main.url(forResource:"wx_bridge",withExtension:"py"),let n=selectedPort() else{return}
-        let p=Process(),pipe=Pipe();p.executableURL=FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".vx/venv/bin/python")
-        p.arguments=["-B",script.path]+args+["--port",String(n)];p.standardOutput=pipe;p.standardError=FileHandle.nullDevice
+        let p=Process(),pipe=Pipe();p.executableURL=Runtime.python
+        p.arguments=["-B",script.path]+args+["--port",String(n)];p.environment=Runtime.environment();p.standardOutput=pipe;p.standardError=FileHandle.nullDevice
         request=p;refresh.isEnabled=false;recent.isEnabled=false;add.isEnabled=false;connect.isEnabled=false;port.isEnabled=false
         statusLabel.stringValue="正在请求连接服务…"
         do {try p.run()} catch {request=nil;refresh.isEnabled=true;connect.isEnabled=service==nil;port.isEnabled=service==nil;statusLabel.stringValue="无法启动连接检查：\(error.localizedDescription)";return}
@@ -84,8 +84,8 @@ final class WxPanel: NSObject {
             let log=state.appendingPathComponent("service-\(Int(Date().timeIntervalSince1970)).log")
             FileManager.default.createFile(atPath:log.path,contents:nil)
             let output=try FileHandle(forWritingTo:log)
-            let p=Process();p.executableURL=FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".vx/venv/bin/python")
-            p.arguments=["-B",script.path,"serve","--port",String(n),"--state",state.path];p.standardOutput=output;p.standardError=output;p.standardInput=FileHandle.nullDevice
+            let p=Process();p.executableURL=Runtime.python
+            p.arguments=["-B",script.path,"serve","--port",String(n),"--state",state.path];p.environment=Runtime.environment();p.standardOutput=output;p.standardError=output;p.standardInput=FileHandle.nullDevice
             p.terminationHandler={proc in
                 try? output.close()
                 DispatchQueue.main.async {self.service=nil;self.connect.isEnabled=self.request==nil;self.port.isEnabled=self.request==nil;self.stop.isEnabled=false;self.recent.isEnabled=false;self.add.isEnabled=false;self.statusLabel.stringValue="本窗口服务已停止；如启动失败，请查看 \(log.lastPathComponent)"}

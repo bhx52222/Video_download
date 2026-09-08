@@ -11,8 +11,12 @@ import ssl
 import subprocess
 import time
 import urllib.request
+import sys
 from pathlib import Path
 from urllib.parse import urlsplit, parse_qs, urlencode
+# 运行时路径统一走 vx_runtime，一体化包才能整体换成 .app 内自带的那份。
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import vx_runtime
 # truststore 让 Python 走系统钥匙串里的根证书。装了 Surge 的 MITM CA 之后，
 # 抓流拿到的直链才验得过。但它只服务于少数几个下载路径，
 # 没有理由因为它缺席就让整个程序起不来——上一版是顶层裸 import，
@@ -62,9 +66,9 @@ def read_cookie(browser):
         return ''
     if browser not in ('edge', 'chrome', 'safari', 'firefox', 'chromium', 'brave'):
         raise ValueError('视频号 Cookie 暂支持浏览器名称，不支持 profile 表达式')
-    python = Path.home() / '.local/share/uv/tools/yt-dlp/bin/python'
+    python = Path(vx_runtime.cookie_python())
     if not python.exists():
-        raise ValueError('缺少 uv 安装的 yt-dlp Python 运行环境')
+        raise ValueError('缺少能 import yt_dlp 的 Python 运行环境')
     result = subprocess.run([str(python), str(SRC / 'vx_browser_cookie.py'), browser],
                             capture_output=True, text=True, timeout=45)
     if result.returncode:
@@ -130,9 +134,9 @@ def fetch_profile(url, browsers='edge,chrome'):
 
 
 def decrypt_file(path, key):
-    binary = Path.home() / '.vx/bin/vx-wx-decrypt'
-    if not binary.exists():
-        raise ValueError('缺少 vx-wx-decrypt；运行 scripts/17_install_wx_share.sh')
+    binary = Path(vx_runtime.tool('vx-wx-decrypt'))
+    if not binary.is_file():
+        raise ValueError('缺少 vx-wx-decrypt；一体化包应自带，否则见 docs/ENVIRONMENT.md')
     result = subprocess.run([str(binary)], input=json.dumps({'path': str(path), 'key': key}),
                             text=True, capture_output=True, timeout=30)
     if result.returncode:

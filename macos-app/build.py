@@ -13,13 +13,13 @@ if hashlib.sha256((helper/'wx_video_download').read_bytes()).hexdigest()!=manife
 APP=ROOT.parent/'outputs/拾影视频下载器-1.4.1测试版.app'
 contents=APP/'Contents'; resources=contents/'Resources'; mac=contents/'MacOS'
 for p in (resources/'backend',mac):p.mkdir(parents=True,exist_ok=True)
-subprocess.run(['xcrun','swiftc','-swift-version','5','-target','arm64-apple-macos14.0','-O','-framework','AppKit',str(ROOT/'App.swift'),str(ROOT/'LinkTools.swift'),str(ROOT/'WxPanel.swift'),'-o',str(mac/'Shiying')],check=True)
+subprocess.run(['xcrun','swiftc','-swift-version','5','-target','arm64-apple-macos14.0','-O','-framework','AppKit',str(ROOT/'App.swift'),str(ROOT/'LinkTools.swift'),str(ROOT/'Runtime.swift'),str(ROOT/'WxPanel.swift'),'-o',str(mac/'Shiying')],check=True)
 shutil.copy(ROOT/'runner.py',resources/'runner.py')
 shutil.copy(ROOT/'downie_bridge.py',resources/'downie_bridge.py')
 shutil.copy(ROOT/'wx_bridge.py',resources/'wx_bridge.py')
 shutil.copy(ROOT/'视频号连接说明.html',resources/'视频号连接说明.html')
 shutil.copytree(ROOT/'external',resources/'external',dirs_exist_ok=True)
-for name in ('vx.py','vx_link.py','vx_tiktok.py','vx_wxchannels.py','vx_browser_cookie.py','vx_kuaishou.py'):
+for name in ('vx.py','vx_link.py','vx_runtime.py','vx_tiktok.py','vx_wxchannels.py','vx_browser_cookie.py','vx_kuaishou.py'):
  shutil.copy(BACKEND/name,resources/'backend'/name)
 shutil.copytree(BACKEND/'vendor',resources/'backend/vendor',dirs_exist_ok=True)
 iconWork=ROOT.parent/'work/macos-app'

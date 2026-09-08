@@ -18,6 +18,6 @@ for folder in ('scripts', 'macos-app'):
         subprocess.run([str(python), '-B', str(test)], cwd=test.parent, env=env, check=True)
 with tempfile.TemporaryDirectory() as td:
     exe = str(Path(td)/'test-links')
-    subprocess.run(['xcrun','swiftc',str(ROOT/'macos-app/LinkTools.swift'),str(ROOT/'macos-app/test_links.swift'),'-o',exe],check=True)
+    subprocess.run(['xcrun','swiftc',str(ROOT/'macos-app/LinkTools.swift'),str(ROOT/'macos-app/Runtime.swift'),str(ROOT/'macos-app/test_links.swift'),'-o',exe],check=True)
     subprocess.run([exe],check=True)
 print('\nAll regression scripts passed.')

@@ -30,9 +30,14 @@ except Exception:
     TLS_CONTEXT = ssl.create_default_context()
     HAS_TRUSTSTORE = False
 
-VXHOME = Path.home() / ".vx"
+# 运行时路径统一走 vx_runtime，一体化包才能把整套换成 .app 内自带的那份。
+# 不设 VX_RUNTIME 时结果与写死 ~/.vx 完全相同。
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import vx_runtime
+
+VXHOME = vx_runtime.state_home()
 DEFAULT_LIB = Path(os.environ.get("VX_LIB", str(Path.home() / "VideoExtract")))
-VISIONOCR = VXHOME / "bin" / "visionocr"
+VISIONOCR = Path(vx_runtime.tool("visionocr"))
 
 CN_HOSTS = ("douyin.com", "bilibili.com", "b23.tv", "xiaohongshu.com", "xhslink",
             "kuaishou.com", "weibo.c", "ixigua.com", "zhihu.com", "qq.com",

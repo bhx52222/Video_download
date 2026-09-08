@@ -172,15 +172,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc func runTask() {
         guard task == nil else {return}
         guard !input.string.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else {alert("请先添加链接","也可以选择一个本地视频。");return}
-        let python=FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".vx/venv/bin/python")
-        guard FileManager.default.isExecutableFile(atPath:python.path),let runner=Bundle.main.url(forResource:"runner",withExtension:"py") else {alert("处理环境不可用","此版本需要本机已安装的 ~/.vx 运行环境。");return}
+        let python=Runtime.python
+        guard Runtime.isAvailable,let runner=Bundle.main.url(forResource:"runner",withExtension:"py") else {alert("处理环境不可用",Runtime.unavailableMessage);return}
         let cookies=["edge,chrome","chrome,edge","edge","chrome","none"]
         handoffToken=UUID().uuidString
         let payload:[String:Any]=["youtube_backend":["core","auto","downie"][youtubeBackend.indexOfSelectedItem],"handoff_token":handoffToken,"text":input.string,"folder":folder.path,"mode":mode.indexOfSelectedItem,"cookies":cookies[cookie.indexOfSelectedItem],"language":["auto","zh","en"][language.indexOfSelectedItem],"tiktok":fallback.state == .on ? "tikwm" : "direct","force":force.state == .on,"redownload":redownload.state == .on,"max_res":[1080,720,2160][quality.indexOfSelectedItem],"youtube_cookies":youtubeCookies.state == .on]
         let p=Process(), stdin=Pipe(), stdout=Pipe();p.executableURL=python;p.arguments=["-B","-u",runner.path]
-        var env=ProcessInfo.processInfo.environment;let home=FileManager.default.homeDirectoryForCurrentUser.path
-        env["PATH"]="\(home)/.vx/bin:\(home)/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin";env["PYTHONUNBUFFERED"]="1";env["PYTHONDONTWRITEBYTECODE"]="1";env["LANG"]="en_US.UTF-8"
-        p.environment=env;p.standardInput=stdin;p.standardOutput=stdout;p.standardError=stdout
+        p.environment=Runtime.environment();p.standardInput=stdin;p.standardOutput=stdout;p.standardError=stdout
         outputPipe=stdout;cancelRequested=false;logView.string="";pendingOutput.removeAll()
         stdout.fileHandleForReading.readabilityHandler={handle in let data=handle.availableData;if !data.isEmpty {DispatchQueue.main.async {self.consume(data)}}}
         p.terminationHandler={process in
