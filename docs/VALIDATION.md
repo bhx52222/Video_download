@@ -12,6 +12,7 @@
 | 视频号无链接采集 | 本机服务启动/停止及状态区分已验证，历史记录与分享 URL 绑定有合成测试；真实卡片 → 链接 → 有效视频仍未完成。 |
 | ISAAC64 | 离线解码测试不等于真实加密作品验收，真实样本仍需另测。 |
 | NeatDownloadManager | 受控媒体直链下载通过；YouTube 页面只得到 HTML，未作为自动备用接入。 |
+| 一体化运行时组装 | `scripts/bundle_runtime.py` 把 Python 独立发行版、truststore、yt-dlp、ffmpeg/ffprobe（连同非系统 dylib 重定位）、visionocr 组装到 `work/runtime/`；转写模型不进包。版本经 `macos-app/runtime.lock.json` 固定并校验 SHA-256，与 wx helper 同一套做法。纯逻辑部分（资产匹配、otool 解析、dylib 相对引用层级）有回归，并用三个变异确认断言有效。脚本本体只能在 macOS 上执行，尚未在开发机跑过，也未打进 `.app`。 |
 | 运行时定位层 | 一体化安装包的地基。`~/.vx` 的九处硬编码收口到 `scripts/src/vx_runtime.py` 与 `macos-app/Runtime.swift`：只读运行时（Python、ffmpeg、yt-dlp、visionocr）可整体切到 `.app` 内，可写状态仍留在 `~/.vx`（`.app` 内部不可写）。不设 `VX_RUNTIME` 时行为与改造前完全一致。`scripts/test_runtime_paths.py` 覆盖默认路径、打包切换、状态分离、缺失工具退回 PATH、venv 布局，连同 vx_link 与 OCR 状态回归在 Linux 上通过。Swift 侧未编译，尚未打入任何真实运行时。 |
 | 链接解析统一 | App 队列改为调用 `vx_link`，与 CLI 同一份规则；`LinkTools.swift` 域名表与标点表对齐 `vx_link`，手动粘贴放行未知站点、自动收集仍只收已知平台。开发机 `scripts/run_tests.py` 完整通过，其中 `LinkTools` 经 swiftc 编译并通过 15 条断言（含仿冒域名与凭据 URL 拒绝）。`build.py` 在开发机构建成功，`App.swift` 的粘贴与收集改动随之通过 swiftc 编译，本地签名已重签。`scripts/verify_link_fix.py` 对构建产物复验通过：包内 `backend/vx_link.py` 与主源码 SHA-256 一致（`365458c2f55c0054…`），用包内 `runner.py` 跑 7 条改动前会出错的真实形态全部符合预期。界面部分由使用者自行测试通过（粘贴与剪贴板收集），未留开发者实测日志。 |
 
