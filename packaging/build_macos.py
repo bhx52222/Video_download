@@ -68,13 +68,20 @@ for name in ('visionocr','vx-wx-decrypt'):
 # Strip build-host-specific paths from distributable manifest.
 (R/'runtime-manifest.json').write_text(json.dumps([{k:v for k,v in x.items() if k!='build_source'} for x in mapping],indent=2))
 subprocess.run(['xcrun','swiftc','-swift-version','5','-target','arm64-apple-macos14.0','-O','-framework','AppKit',*[str(ROOT/'macos-app'/n) for n in ('App.swift','LinkTools.swift','WxPanel.swift')],'-o',str(M/'Shiying')],check=True)
-info={'CFBundleExecutable':'Shiying','CFBundleIdentifier':'local.beibei.shiying.standalone','CFBundleName':'拾影视频下载器','CFBundlePackageType':'APPL','CFBundleShortVersionString':'1.5','CFBundleVersion':'7','LSMinimumSystemVersion':'14.0','NSHighResolutionCapable':True,'NSPrincipalClass':'NSApplication'}
+icon=ROOT/'work/macos-icon';icon.mkdir(parents=True,exist_ok=True)
+subprocess.run(['xcrun','swiftc','-framework','AppKit',str(ROOT/'macos-app/Icon.swift'),'-o',str(icon/'builder')],check=True)
+subprocess.run([str(icon/'builder'),str(icon/'App.iconset')],check=True)
+subprocess.run(['iconutil','-c','icns',str(icon/'App.iconset'),'-o',str(R/'App.icns')],check=True)
+info={'CFBundleExecutable':'Shiying','CFBundleIdentifier':'local.beibei.shiying.standalone','CFBundleName':'拾影视频下载器','CFBundlePackageType':'APPL','CFBundleShortVersionString':'1.5','CFBundleVersion':'7','CFBundleIconFile':'App','LSMinimumSystemVersion':'14.0','NSHighResolutionCapable':True,'NSPrincipalClass':'NSApplication'}
 (APP/'Contents/Info.plist').write_bytes(plistlib.dumps(info))
 # Sign Mach-O objects individually inside-out, then the complete bundle.
 for p in sorted(R.rglob('*'),key=lambda p:len(p.parts),reverse=True):
     if not p.is_file() or p.is_symlink():continue
     with p.open('rb') as f:magic=f.read(4)
     if magic in (b'\xcf\xfa\xed\xfe',b'\xce\xfa\xed\xfe',b'\xca\xfe\xba\xbe'):
+        identity=subprocess.check_output(['otool','-D',str(p)],text=True).splitlines()
+        if len(identity)>1:
+            subprocess.run(['install_name_tool','-id','@loader_path/'+p.name,str(p)],check=True,capture_output=True)
         subprocess.run(['codesign','--force','--sign','-',str(p)],check=True,capture_output=True)
 subprocess.run(['codesign','--force','--deep','--sign','-',str(APP)],check=True)
 print(APP)

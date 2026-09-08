@@ -27,7 +27,9 @@ def resolve(source, config, core):
     return url,data
 
 def download(source,config,core,cancelled,emit):
+    if cancelled():return None,{}
     exe=executable();url,metadata=resolve(source,config,core)
+    if cancelled():return None,metadata
     folder=Path(config['folder']).resolve()/'.external-idm'/uuid.uuid4().hex
     folder.mkdir(parents=True,exist_ok=False)
     (folder/'source.json').write_text(json.dumps({'url':source,'status':'waiting'}),encoding='utf-8')

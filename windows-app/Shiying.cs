@@ -79,12 +79,13 @@ class WxWindow:Form {
     string root;TextBox log=new TextBox();ComboBox history=new ComboBox();Process service;List<Dictionary<string,object>> items=new List<Dictionary<string,object>>();JavaScriptSerializer json=new JavaScriptSerializer();
     public WxWindow(string r){root=r;Text="视频号采集 · 试验";Width=760;Height=440;var top=new FlowLayoutPanel(){Dock=DockStyle.Top,AutoSize=true};Controls.Add(top);log.Multiline=true;log.ReadOnly=true;log.Dock=DockStyle.Fill;log.ScrollBars=ScrollBars.Vertical;Controls.Add(log);log.BringToFront();
         Shiying.AddButton(top,"启动服务",()=>{if(service!=null&&!service.HasExited)return;service=Process.Start(Info("serve --port 2022 --state "+Shiying.Quote(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Shiying","WxBridge")),false));log.Text="服务启动请求已发送。不会安装证书或修改代理；仍需检查页面连接。";});
-        Shiying.AddButton(top,"停止本窗口服务",()=>{if(service!=null&&!service.HasExited)service.Kill();});
+        Shiying.AddButton(top,"停止本窗口服务",()=>{StopService();});
         Shiying.AddButton(top,"检查连接",async()=>log.Text=await Call("status --port 2022"));
         Shiying.AddButton(top,"最近观看",async()=>{string text=await Call("history --port 2022");log.Text=text;var d=json.Deserialize<Dictionary<string,object>>(text);items.Clear();history.Items.Clear();if(d.ContainsKey("items"))foreach(var o in (System.Collections.IEnumerable)d["items"]){var item=(Dictionary<string,object>)o;items.Add(item);history.Items.Add(item["author"]+" · "+item["title"]);}if(items.Count>0)history.SelectedIndex=0;});
         history.Width=450;top.Controls.Add(history);Shiying.AddButton(top,"取得并复制链接",async()=>{if(history.SelectedIndex<0)return;string text=await Call("share --port 2022 --oid "+Shiying.Quote(Convert.ToString(items[history.SelectedIndex]["id"])));log.Text=text;var d=json.Deserialize<Dictionary<string,object>>(text);if(d.ContainsKey("share_url"))Clipboard.SetText(Convert.ToString(d["share_url"]));});
-        FormClosed+=(s,e)=>{if(service!=null&&!service.HasExited)service.Kill();};
+        FormClosed+=(s,e)=>{StopService();};
     }
+    void StopService(){if(service!=null&&!service.HasExited)Process.Start(new ProcessStartInfo("taskkill.exe","/PID "+service.Id+" /T /F"){UseShellExecute=false,CreateNoWindow=true}).WaitForExit();}
     ProcessStartInfo Info(string args,bool capture){return new ProcessStartInfo(Path.Combine(root,"runtime","python.exe"),"-B "+Shiying.Quote(Path.Combine(root,"wx_bridge.py"))+" "+args) {UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=capture,RedirectStandardError=capture,StandardOutputEncoding=capture?Encoding.UTF8:null,WorkingDirectory=root};}
     async Task<string> Call(string args){try{return await Task.Run(()=>{using(var p=Process.Start(Info(" "+args,true))){string s=p.StandardOutput.ReadToEnd();string e=p.StandardError.ReadToEnd();p.WaitForExit();return s.Length>0?s:e;}});}catch(Exception e){return e.Message;}}
 }
