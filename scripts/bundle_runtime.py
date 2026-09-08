@@ -191,8 +191,10 @@ def write_ytdlp_shim(bin_dir):
     相对定位，搬到哪都对。
     """
     shim = bin_dir / "yt-dlp"
+    # ${0%/*} 是 shell 内建的参数展开，不需要 dirname 之类的外部命令。
+    # 上一版用 $(dirname "$0")，自检把 PATH 清空后就 command not found。
     shim.write_text('#!/bin/sh\n'
-                    'here=$(cd "$(dirname "$0")" && pwd)\n'
+                    'here=${0%/*}\n'
                     'exec "$here/../python/bin/python3" -m yt_dlp "$@"\n')
     shim.chmod(0o755)
     return shim
@@ -201,19 +203,72 @@ def write_ytdlp_shim(bin_dir):
 # ─────────────────────────────────────────────── ffmpeg 与它的一串依赖
 
 def parse_otool(text):
-    """从 otool -L 的输出里挑出需要打包的动态库。
+    """从 otool -L 的输出里挑出需要处理的依赖引用，原样返回。
 
-    要排除三类，漏掉任何一类都会出问题：
+    只排除两类：
       /usr/lib/、/System/  系统自带，拷进包反而可能和系统版本冲突
-      @ 开头              已经是相对引用（@rpath/@loader_path），不用再动
-      第一行              是文件自己的路径，不是依赖
+      第一行               是文件自己的路径，不是依赖
+
+    **@ 开头的不能跳过。** 上一版跳过了它们，理由写的是"已经是相对引用"，
+    这个判断只对 @loader_path 成立。@rpath/X 靠二进制里的 LC_RPATH 搜索
+    路径才解析得出来，拷进包之后那些路径不再有效——实测 Homebrew 的
+    libwebp.7.dylib 用 @rpath 引用 libsharpyuv.0.dylib，跳过它的结果是
+    libsharpyuv 根本没被拷进来，ffmpeg 一启动就 Library not loaded。
+    而 @loader_path 相对的是文件原来的位置，搬进 lib/ 之后同样要重算。
     """
     out = []
     for line in text.splitlines()[1:]:
         path = line.strip().split(" (")[0]
-        if path and not path.startswith(SYSTEM_PREFIXES) and not path.startswith("@"):
+        if path and not path.startswith(SYSTEM_PREFIXES):
             out.append(path)
     return out
+
+
+def parse_rpaths(text):
+    """从 otool -l 的输出里读出 LC_RPATH。解析 @rpath/X 要靠它。
+
+    加载命令的形态是三行一组：
+        cmd LC_RPATH
+        cmdsize 40
+        path /opt/homebrew/lib (offset 12)
+    """
+    out = []
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if line.strip() == "cmd LC_RPATH":
+            for follow in lines[i + 1:i + 4]:
+                m = re.match(r"\s*path (.+?) \(offset \d+\)\s*$", follow)
+                if m:
+                    out.append(m.group(1))
+                    break
+    return out
+
+
+def expand_ref(ref, source, rpaths):
+    """把 otool 里的一条引用解析成真实文件路径，解析不出返回 None。
+
+    source 必须是**依赖它的那个文件原来的位置**，不是拷贝之后的位置：
+    @loader_path 和 @rpath 里的 @loader_path 都相对于原始目录，
+    用拷贝后的位置去解析会全部落空。
+    """
+    source_dir = Path(source).parent
+
+    def substitute(text):
+        return (text.replace("@loader_path", str(source_dir))
+                    .replace("@executable_path", str(source_dir)))
+
+    if ref.startswith("@rpath/"):
+        tail = ref[len("@rpath/"):]
+        for entry in rpaths:
+            candidate = Path(substitute(entry)) / tail
+            if candidate.is_file():
+                return candidate.resolve()
+        return None
+    if ref.startswith(("@loader_path/", "@executable_path/")):
+        candidate = Path(substitute(ref))
+        return candidate.resolve() if candidate.is_file() else None
+    candidate = Path(ref)
+    return candidate.resolve() if candidate.is_file() else None
 
 
 def relative_ref(consumer_dir, name, lib_dir):
@@ -240,50 +295,95 @@ def resign(path):
         raise SystemExit(f"重签失败 {path}：{result.stderr.strip()[:200]}")
 
 
-def bundle_macho(source, bin_dir, lib_dir, collected):
-    """把一个可执行文件连同它的非系统依赖拷进来，引用改成相对路径。
+def discover(sources):
+    """从**原始位置**递归发现所有要打包的依赖。
 
-    Homebrew 的 ffmpeg 链接着几十个 /opt/homebrew/... 的 dylib，
-    直接拷可执行文件到别人电脑上必然起不来。这里递归收集，
-    全部改成 @loader_path 相对引用，包搬到哪都能自洽。
+    必须在原始位置做：@loader_path 和 @rpath 里的路径都相对于文件原来的
+    目录，在拷贝后的文件上解析会全部落空——上一版就是这么错的。
+
+    返回 (found, refs)：
+      found  name -> 原始路径，需要拷进 lib/ 的库
+      refs   原始路径 -> [(引用原文, 解析出的 name)]，改写时要按原文去 -change
     """
-    dest = bin_dir / Path(source).name
-    shutil.copy2(source, dest)
-    dest.chmod(0o755)
-    pending = [dest]
+    found = {}
+    refs = {}
+    pending = [Path(s).resolve() for s in sources]
+    roots = {str(p) for p in pending}
+    seen = set()
     while pending:
         current = pending.pop()
-        for dep in dependencies(current):
-            name = Path(dep).name
-            target = lib_dir / name
-            if name not in collected:
-                if not Path(dep).is_file():
-                    raise SystemExit(f"{current.name} 依赖 {dep}，但这个文件不存在。")
-                shutil.copy2(dep, target)
-                target.chmod(0o755)
-                collected[name] = dep
-                run(["install_name_tool", "-id", f"@loader_path/{name}", str(target)])
-                pending.append(target)
-            rel = relative_ref(current.parent, name, lib_dir)
-            result = run(["install_name_tool", "-change", dep, rel, str(current)])
-            if result.returncode:
-                raise SystemExit(f"重定位失败 {current.name} → {dep}：{result.stderr.strip()[:200]}")
-    return dest
+        key = str(current)
+        if key in seen:
+            continue
+        seen.add(key)
+        listing = run(["otool", "-L", key])
+        if listing.returncode:
+            raise SystemExit(f"otool -L 读不了 {key}：{listing.stderr.strip()[:200]}")
+        commands = run(["otool", "-l", key])
+        if commands.returncode:
+            raise SystemExit(f"otool -l 读不了 {key}：{commands.stderr.strip()[:200]}")
+        rpaths = parse_rpaths(commands.stdout)
+        entries = []
+        for ref in parse_otool(listing.stdout):
+            real = expand_ref(ref, current, rpaths)
+            if real is None:
+                raise SystemExit(
+                    f"{Path(key).name} 依赖 {ref}，解析不到实际文件。\n"
+                    f"  该文件的 LC_RPATH：{rpaths or '（没有）'}\n"
+                    f"  这条依赖没打进包的话，装到别人电脑上会 Library not loaded。")
+            entries.append((ref, real.name))
+            if real.name not in found and str(real) not in roots:
+                found[real.name] = real
+                pending.append(real)
+        refs[key] = entries
+    return found, refs
 
 
 def install_ffmpeg(bin_dir, lib_dir):
+    """把 ffmpeg/ffprobe 连同非系统依赖拷进来，引用全改成相对路径。
+
+    Homebrew 的 ffmpeg 链着几十个 /opt/homebrew/... 的库，还有一层
+    @rpath 引用；只拷可执行文件在别人机器上必然起不来。这里把 lib/
+    做成扁平自洽的一层：所有库放同一个目录，互相之间 @loader_path/<名字>，
+    可执行文件 @loader_path/../lib/<名字>。
+    """
     print("[3/5] ffmpeg / ffprobe")
-    collected = {}
+    sources = []
     for name in ("ffmpeg", "ffprobe"):
-        source = need(name)
-        bundle_macho(source, bin_dir, lib_dir, collected)
+        source = Path(need(name)).resolve()
+        sources.append(source)
         print(f"      {name} ← {source}")
-    for name in sorted(collected):
-        resign(lib_dir / name)
-    for name in ("ffmpeg", "ffprobe"):
-        resign(bin_dir / name)
-    print(f"      连带 {len(collected)} 个依赖库")
-    return collected
+    found, refs = discover(sources)
+
+    mapping = {}
+    for source in sources:
+        dest = bin_dir / source.name
+        shutil.copy2(source, dest)
+        dest.chmod(0o755)
+        mapping[str(source)] = dest
+    for name, source in found.items():
+        dest = lib_dir / name
+        shutil.copy2(source, dest)
+        dest.chmod(0o755)
+        mapping[str(source)] = dest
+
+    for original, entries in refs.items():
+        dest = mapping[original]
+        if dest.parent == lib_dir:
+            # 自身 id 也要改，否则别的库仍按旧的绝对路径找它
+            result = run(["install_name_tool", "-id", f"@loader_path/{dest.name}", str(dest)])
+            if result.returncode:
+                raise SystemExit(f"改 id 失败 {dest.name}：{result.stderr.strip()[:200]}")
+        for ref, name in entries:
+            result = run(["install_name_tool", "-change", ref,
+                          relative_ref(dest.parent, name, lib_dir), str(dest)])
+            if result.returncode:
+                raise SystemExit(f"重定位失败 {dest.name} → {ref}：{result.stderr.strip()[:200]}")
+
+    for dest in mapping.values():
+        resign(dest)
+    print(f"      连带 {len(found)} 个依赖库，全部改为 @loader_path 相对引用")
+    return sorted(found)
 
 
 def install_visionocr(bin_dir):
@@ -319,9 +419,12 @@ def selftest(python, bin_dir):
     PATH 清成空目录：只要有一处还在偷偷用本机的 ffmpeg 或 yt-dlp，
     这里就会暴露，而不是等用户在干净的 Mac 上才发现。
     """
-    print("[5/5] 自检（PATH 清空，只用包内的东西）")
-    with tempfile.TemporaryDirectory() as empty:
-        env = dict(os.environ, PATH=empty, VX_RUNTIME=str(OUT))
+    print("[5/5] 自检（PATH 只留系统目录，模拟没装过任何东西的 Mac）")
+    # 用 /usr/bin:/bin 而不是空目录：要验的是"不依赖 Homebrew 和 ~/.vx"，
+    # 不是"不依赖 macOS 自带命令"。任何 Mac 都有 /usr/bin，清掉它反而
+    # 制造出真实环境里不存在的失败（上一版就因此误报了 shim 的问题）。
+    if True:
+        env = dict(os.environ, PATH="/usr/bin:/bin", VX_RUNTIME=str(OUT))
         checks = [
             ("python", [str(python), "-c", "import truststore, yt_dlp"]),
             ("yt-dlp", [str(bin_dir / "yt-dlp"), "--version"]),
