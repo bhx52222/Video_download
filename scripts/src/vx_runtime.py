@@ -20,21 +20,57 @@ import os
 import shutil
 from pathlib import Path
 
-# 一体化包由 App 设置 VX_RUNTIME 指向 .app/Contents/Resources/runtime。
-# 不设就是老路径，行为与改造前完全相同。
-_DEFAULT = Path.home() / ".vx"
+WINDOWS = os.name == "nt"
+
+# 下面几个 _ 开头的函数都把平台当参数收，不直接读 os.name。
+# 这样两个平台的规则都能在任意一台机器上测——按 CLAUDE.md 硬规则 5，
+# 测试不能依赖跑测试的机器是什么系统，否则 macOS 上写的断言在 Windows 上
+# 恒真或恒假，等于没测。
+
+
+def _state_default(windows=WINDOWS):
+    """默认可写状态目录。
+
+    macOS/Linux 沿用 ~/.vx，一个字节都不能变——已验收的版本靠它。
+    Windows 上不该往用户主目录扔隐藏目录，按系统惯例放 %LOCALAPPDATA%。
+    """
+    if windows:
+        base = os.environ.get("LOCALAPPDATA")
+        return Path(base) / "Shiying" if base else Path.home() / "AppData/Local/Shiying"
+    return Path.home() / ".vx"
+
+
+def _python_candidates(root, windows=WINDOWS):
+    """包内 Python 解释器的候选位置，按优先级。
+
+    Windows 的独立发行版把解释器放在顶层 python.exe，没有 bin/；
+    venv 则在 Scripts/ 而不是 bin/。两边布局完全不同，不能共用一条路径。
+    """
+    if windows:
+        return [root / "python/python.exe", root / "venv/Scripts/python.exe"]
+    return [root / "python/bin/python3", root / "venv/bin/python"]
+
+
+def _tool_names(name, windows=WINDOWS):
+    """一个工具在这个平台上可能的文件名。
+
+    Windows 上 ffmpeg 实际叫 ffmpeg.exe。只按裸名字找必然找不到，
+    然后静默退回 PATH——在一体化包里这等于用了用户机器上的版本，
+    正是打包要消灭的情况。
+    """
+    return [name + ".exe", name] if windows else [name]
 
 
 def runtime_home():
     """只读运行时的根目录。"""
     value = os.environ.get("VX_RUNTIME")
-    return Path(value).expanduser() if value else _DEFAULT
+    return Path(value).expanduser() if value else _state_default()
 
 
 def state_home():
     """可写状态目录。永远不在 .app 内部——那里不可写。"""
     value = os.environ.get("VX_STATE")
-    return Path(value).expanduser() if value else _DEFAULT
+    return Path(value).expanduser() if value else _state_default()
 
 
 def bin_dir():
@@ -50,9 +86,10 @@ def tool(name, required=False):
     报错信息比这里提前抛更贴近现场（用户看到的是 ffmpeg 自己的报错）。
     required=True 才抛，用于确实无法降级的场合。
     """
-    candidate = bin_dir() / name
-    if candidate.is_file() and os.access(candidate, os.X_OK):
-        return str(candidate)
+    for filename in _tool_names(name):
+        candidate = bin_dir() / filename
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
     found = shutil.which(name)
     if found:
         return found
@@ -68,11 +105,10 @@ def python():
 
     一体化包内自带一份；否则回退到 ~/.vx/venv/bin/python。
     """
-    for candidate in (runtime_home() / "python/bin/python3",
-                      runtime_home() / "venv/bin/python"):
+    for candidate in _python_candidates(runtime_home()):
         if candidate.is_file() and os.access(candidate, os.X_OK):
             return str(candidate)
-    return str(_DEFAULT / "venv/bin/python")
+    return str(_python_candidates(_state_default())[-1])
 
 
 def cookie_python():
@@ -81,9 +117,11 @@ def cookie_python():
     它需要 import yt_dlp。一体化包里主运行时就装了 yt-dlp，直接用；
     依赖本机环境时，yt-dlp 装在 uv 的工具环境里，是另一个解释器。
     """
-    bundled = runtime_home() / "python/bin/python3"
+    bundled = _python_candidates(runtime_home())[0]
     if bundled.is_file() and os.access(bundled, os.X_OK):
         return str(bundled)
+    # 回退是「依赖本机环境」那条路，只有 macOS/Linux 走得到：
+    # Windows 版只出一体化包，包内 python 一定存在。
     return str(Path.home() / ".local/share/uv/tools/yt-dlp/bin/python")
 
 

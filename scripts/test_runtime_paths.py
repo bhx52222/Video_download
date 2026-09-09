@@ -106,10 +106,45 @@ with tempfile.TemporaryDirectory() as td:
     rt = fresh(VX_RUNTIME=str(venv_root))
     check("venv 布局的 python", rt.python(), str(venv_python))
 
+# ── 6. Windows 规则：在任意平台上都要能测 ──
+#
+# 平台判断被做成函数参数就是为了这一节。若靠 os.name 分支，
+# 这些断言在 macOS 上恒走 POSIX 分支，等于没测；而 Windows 那条路
+# 只有真到了 Windows 才第一次执行——那时错了才发现就太晚。
+import vx_runtime as vr
+
+check("Windows 解释器在顶层 python.exe",
+      vr._python_candidates(Path("/r"), windows=True),
+      [Path("/r/python/python.exe"), Path("/r/venv/Scripts/python.exe")])
+check("POSIX 解释器在 bin/",
+      vr._python_candidates(Path("/r"), windows=False),
+      [Path("/r/python/bin/python3"), Path("/r/venv/bin/python")])
+
+# 只按裸名字找，在 Windows 上必然落空然后静默退回 PATH——
+# 一体化包里那等于用了用户机器上的 ffmpeg，正是打包要消灭的情况。
+check("Windows 优先找 .exe", vr._tool_names("ffmpeg", windows=True), ["ffmpeg.exe", "ffmpeg"])
+check("POSIX 不加后缀", vr._tool_names("ffmpeg", windows=False), ["ffmpeg"])
+
+saved_local = os.environ.get("LOCALAPPDATA")
+os.environ["LOCALAPPDATA"] = r"C:\Users\tester\AppData\Local"
+try:
+    check("Windows 状态目录按系统惯例",
+          vr._state_default(windows=True), Path(r"C:\Users\tester\AppData\Local") / "Shiying")
+finally:
+    os.environ.pop("LOCALAPPDATA", None)
+    if saved_local is not None:
+        os.environ["LOCALAPPDATA"] = saved_local
+# 没有 LOCALAPPDATA 也要给得出路径，不能崩
+check("缺 LOCALAPPDATA 时退回主目录下的标准位置",
+      vr._state_default(windows=True), HOME / "AppData/Local/Shiying")
+# 这条是防回归：macOS 已验收的版本靠 ~/.vx，一个字节都不能变
+check("POSIX 状态目录仍是 ~/.vx", vr._state_default(windows=False), HOME / ".vx")
+
 fresh()  # 别把环境变量留给后面的测试
 
 if fail:
     print(f"❌ {len(fail)} 项不符：\n" + "\n".join(fail))
     sys.exit(1)
-print("PASS vx_runtime：默认行为不变、一体化包路径切换、状态与运行时分离、"
-      "缺失工具退回 PATH、venv 布局兼容")
+print("PASS vx_runtime：POSIX 行为不变、一体化包路径切换、状态与运行时分离、"
+      "缺失工具退回 PATH、venv 布局兼容、Windows 布局规则（.exe 后缀、"
+      "顶层 python.exe、%LOCALAPPDATA%）")

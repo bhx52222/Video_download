@@ -1,5 +1,5 @@
 """App bridge: JSON on stdin, readable progress on stdout; never invokes a shell."""
-import json, os, re, signal, subprocess, sys, threading, runpy, time
+import json, re, subprocess, sys, runpy, time
 from pathlib import Path
 import downie_bridge
 BACKEND = Path(__file__).resolve().parent / 'backend'
@@ -8,6 +8,7 @@ BACKEND = Path(__file__).resolve().parent / 'backend'
 # 尾部的 ？】》… 会被吃进 URL，结果是 CLI 能下、App 下不了。
 sys.path.insert(0, str(BACKEND))
 import vx_link
+import vx_process
 CORE = BACKEND / 'vx.py'
 child = None
 cancelled = False
@@ -15,14 +16,7 @@ cancelled = False
 def stop(signum, frame):
     global cancelled
     cancelled = True
-    if child and child.poll() is None:
-        pgid=child.pid
-        try: os.killpg(pgid, signal.SIGTERM)
-        except ProcessLookupError: return
-        try: child.wait(timeout=3)
-        except subprocess.TimeoutExpired: pass
-        try: os.killpg(pgid, signal.SIGKILL)
-        except ProcessLookupError: pass
+    vx_process.terminate_tree(child)
 
 def targets(text):
     """输入区文本 → 待处理队列。本地文件按原路径入队，其余交给 vx_link 解析。
@@ -63,7 +57,7 @@ def command(url, config):
 
 def main():
     global child
-    signal.signal(signal.SIGTERM,stop);signal.signal(signal.SIGINT,stop)
+    vx_process.install_handlers(stop)
     config=json.load(sys.stdin)
     if config.get('youtube_backend','core') not in ('core','auto','downie'):raise ValueError('无效 YouTube 下载方式')
     if config.get('tiktok','direct') not in ('direct','auto','tikwm'):raise ValueError('无效 TikTok 模式')
@@ -78,11 +72,8 @@ def main():
     ok=0;failed=0
     def execute(cmd):
         global child
-        mask=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGTERM,signal.SIGINT})
-        try:
-            child=subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
-                text=True,errors='replace',start_new_session=True,bufsize=1)
-        finally:signal.pthread_sigmask(signal.SIG_SETMASK,mask)
+        child=vx_process.spawn(cmd,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
+            text=True,errors='replace',bufsize=1)
         for line in child.stdout:
             clean=re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]','',line)
             print(clean.rstrip(),flush=True)
