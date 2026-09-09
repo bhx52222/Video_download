@@ -179,7 +179,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let payload:[String:Any]=["youtube_backend":["core","auto","downie"][youtubeBackend.indexOfSelectedItem],"handoff_token":handoffToken,"text":input.string,"folder":folder.path,"mode":mode.indexOfSelectedItem,"cookies":cookies[cookie.indexOfSelectedItem],"language":["auto","zh","en"][language.indexOfSelectedItem],"tiktok":fallback.state == .on ? "tikwm" : "direct","force":force.state == .on,"redownload":redownload.state == .on,"max_res":[1080,720,2160][quality.indexOfSelectedItem],"youtube_cookies":youtubeCookies.state == .on]
         let p=Process(), stdin=Pipe(), stdout=Pipe();p.executableURL=python;p.arguments=["-B","-u",runner.path]
         var env=ProcessInfo.processInfo.environment;let home=FileManager.default.homeDirectoryForCurrentUser.path
-        env["PATH"]="\(home)/.vx/bin:\(home)/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin";env["PYTHONUNBUFFERED"]="1";env["PYTHONDONTWRITEBYTECODE"]="1";env["LANG"]="en_US.UTF-8"
+        env["PATH"]="/usr/bin:/bin:/usr/sbin:/sbin";env["PYTHONUNBUFFERED"]="1";env["PYTHONDONTWRITEBYTECODE"]="1";env["LANG"]="en_US.UTF-8"
         p.environment=env;p.standardInput=stdin;p.standardOutput=stdout;p.standardError=stdout
         outputPipe=stdout;cancelRequested=false;logView.string="";pendingOutput.removeAll()
         stdout.fileHandleForReading.readabilityHandler={handle in let data=handle.availableData;if !data.isEmpty {DispatchQueue.main.async {self.consume(data)}}}

@@ -20,6 +20,19 @@ def download(url,name):
 py=download('https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip','python-embed.zip')
 with zipfile.ZipFile(py) as z:z.extractall(R/'runtime')
 (R/'runtime/python312._pth').write_text('python312.zip\n.\nLib/site-packages\n..\n../backend\nimport site\n')
+# App-local CRT: the installer must work without a machine-wide VC++ setup.
+vswhere=Path(os.environ.get('ProgramFiles(x86)',r'C:\Program Files (x86)'))/'Microsoft Visual Studio/Installer/vswhere.exe'
+vs=Path(subprocess.check_output([str(vswhere),'-latest','-products','*','-requires','Microsoft.VisualStudio.Component.VC.Tools.x86.x64','-property','installationPath'],text=True).strip())
+crts=list((vs/'VC/Redist/MSVC').glob('*/x64/Microsoft.VC*.CRT'))
+if not crts:raise RuntimeError('Visual C++ redistributable CRT directory missing')
+crt=max(crts,key=lambda p:tuple(int(n) for n in p.parents[1].name.split('.')))
+crt_files=list(crt.glob('*.dll'))
+if not {'msvcp140.dll','vcruntime140.dll','vcruntime140_1.dll'}.issubset({p.name.lower() for p in crt_files}):
+    raise RuntimeError('Incomplete Visual C++ CRT redistributables')
+for dll in crt_files:shutil.copy2(dll,R/'runtime'/dll.name)
+provenance.append({'component':'Microsoft Visual C++ app-local CRT','version':crt.parents[1].name,
+    'documentation':'https://learn.microsoft.com/en-us/cpp/windows/determining-which-dlls-to-redistribute',
+    'files':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in crt_files}})
 site=R/'runtime/Lib/site-packages'
 subprocess.run([sys.executable,'-m','pip','install','--target',str(site),'truststore','yt-dlp[default]','funasr','modelscope','faster-whisper','rapidocr-onnxruntime','pillow','srt','rich','tqdm','requests','soundfile'],check=True)
 subprocess.run([sys.executable,'-m','pip','install','--upgrade','--target',str(site),'torch','torchaudio','--index-url','https://download.pytorch.org/whl/cpu'],check=True)

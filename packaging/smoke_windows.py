@@ -5,6 +5,14 @@ sys.path.insert(0,str(R/'backend'))
 from vx_runtime import configure
 assert configure(R)
 assert '.vx' not in sys.executable
+# Verify the actual loaded CRT comes from the installed application.
+import ctypes
+crt=ctypes.WinDLL(str(R/'runtime/msvcp140.dll'))
+name=ctypes.create_unicode_buffer(32768)
+get_name=ctypes.windll.kernel32.GetModuleFileNameW
+get_name.argtypes=[ctypes.c_void_p,ctypes.c_wchar_p,ctypes.c_uint]
+assert get_name(crt._handle,name,len(name))
+assert Path(name.value).resolve()==(R/'runtime/msvcp140.dll').resolve(),name.value
 import yt_dlp,truststore,funasr,faster_whisper,rapidocr_onnxruntime
 with tempfile.TemporaryDirectory() as td:
     root=Path(td);media=root/'测试 & space.mp4'
