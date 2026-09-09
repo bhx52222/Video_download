@@ -29,6 +29,31 @@ python3 macos-app/build.py
 
 输出 `outputs/拾影视频下载器-1.4.1测试版.app`。第三方连接组件的二进制不进入 Git，构建包保留其来源和许可证。构建需要该组件文件存在且哈希正确。
 
+这样出的是**依赖本机 `~/.vx` 的版本**，别人下载后必须先配环境才能用。
+
+## 构建一体化包
+
+一体化包自带 Python、FFmpeg、yt-dlp 和 visionocr，不依赖使用者的 `~/.vx`。
+语音转写模型不在包内，首次使用时下载，否则包会到数 GB。
+
+```bash
+python3 scripts/bundle_runtime.py --check    # 看环境够不够，不下载
+python3 scripts/bundle_runtime.py --update   # 首次：解析并锁定 Python 版本
+python3 scripts/bundle_runtime.py            # 组装到 work/runtime/
+python3 macos-app/build.py                   # 检测到 work/runtime/ 就打进去
+python3 scripts/verify_bundle.py             # 验构建产物
+```
+
+Python 版本锁在 `macos-app/runtime.lock.json`，含 SHA-256，校验不过就什么都不装；
+换 Python 版本才需要再跑 `--update`，平时不用。`work/runtime/` 不存在时 `build.py`
+照旧出依赖本机环境的版本，不会失败。
+
+`verify_bundle.py` 把 Homebrew、`~/.vx`、uv 全部移出 PATH 再跑包内的东西——
+**按平常方式测是测不出漏打包的**，本机什么都有，缺的照样能被找到。
+
+开发机实测：Python 3.12.14、yt-dlp 2026.08.19、ffmpeg 7.1.1_2 连带 92 个依赖库，
+成包 238 MB。仍未在没装过环境的干净 Mac 上验收。
+
 修改内核时，以 `scripts/src/` 为主源码；审查差异后将五个模块及 vendor 同步到 `macos-app/backend/`。构建保护会检查这些文件，差异必须先解决。
 
 ## 命令行与验证
