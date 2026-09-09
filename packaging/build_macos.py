@@ -6,7 +6,7 @@ sys.path.insert(0,str(ROOT/'macos-app'))
 from check_backend import require_current
 require_current()
 PYTHON=Path(os.environ.get('SHIYING_BUILD_PYTHON',str(Path.home()/'.vx/venv/bin/python')))
-APP=ROOT/'outputs/拾影视频下载器-1.5独立版.app'
+APP=ROOT/'outputs/拾影视频下载器-1.5.1独立版.app'
 if APP.exists():shutil.rmtree(APP)  # Only the generated build output.
 R=APP/'Contents/Resources'; M=APP/'Contents/MacOS'
 for p in (R,M):p.mkdir(parents=True,exist_ok=True)
@@ -72,7 +72,7 @@ icon=ROOT/'work/macos-icon';icon.mkdir(parents=True,exist_ok=True)
 subprocess.run(['xcrun','swiftc','-framework','AppKit',str(ROOT/'macos-app/Icon.swift'),'-o',str(icon/'builder')],check=True)
 subprocess.run([str(icon/'builder'),str(icon/'App.iconset')],check=True)
 subprocess.run(['iconutil','-c','icns',str(icon/'App.iconset'),'-o',str(R/'App.icns')],check=True)
-info={'CFBundleExecutable':'Shiying','CFBundleIdentifier':'local.beibei.shiying.standalone','CFBundleName':'拾影视频下载器','CFBundlePackageType':'APPL','CFBundleShortVersionString':'1.5','CFBundleVersion':'7','CFBundleIconFile':'App','LSMinimumSystemVersion':'14.0','NSHighResolutionCapable':True,'NSPrincipalClass':'NSApplication'}
+info={'CFBundleExecutable':'Shiying','CFBundleIdentifier':'local.beibei.shiying.standalone','CFBundleName':'拾影视频下载器','CFBundlePackageType':'APPL','CFBundleShortVersionString':'1.5.1','CFBundleVersion':'8','CFBundleIconFile':'App','LSMinimumSystemVersion':'14.0','NSHighResolutionCapable':True,'NSPrincipalClass':'NSApplication'}
 (APP/'Contents/Info.plist').write_bytes(plistlib.dumps(info))
 # Sign Mach-O objects individually inside-out, then the complete bundle.
 for p in sorted(R.rglob('*'),key=lambda p:len(p.parts),reverse=True):

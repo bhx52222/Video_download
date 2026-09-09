@@ -1,4 +1,4 @@
-#define AppVersion "1.5.0"
+#define AppVersion "1.5.1"
 #ifndef BundleRoot
 #define BundleRoot "..\outputs\Shiying-Windows"
 #endif
@@ -12,7 +12,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\outputs
-OutputBaseFilename=Shiying-1.5-Windows-x64-Setup
+OutputBaseFilename=Shiying-1.5.1-Windows-x64-Setup
 Compression=lzma2/fast
 SolidCompression=yes
 WizardStyle=modern

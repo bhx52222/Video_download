@@ -8,6 +8,7 @@ BACKEND = Path(__file__).resolve().parent / 'backend'
 # 尾部的 ？】》… 会被吃进 URL，结果是 CLI 能下、App 下不了。
 sys.path.insert(0, str(BACKEND))
 import vx_link
+from vx_process import spawn
 from vx_runtime import configure
 configure(Path(__file__).resolve().parent)
 CORE = BACKEND / 'vx.py'
@@ -85,7 +86,7 @@ def main():
         global child
         mask=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGTERM,signal.SIGINT}) if os.name != 'nt' else None
         try:
-            child=subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
+            child=spawn(cmd,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
                 text=True,encoding='utf-8',errors='replace',start_new_session=os.name != 'nt',creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0,bufsize=1)
         finally:
             if mask is not None:signal.pthread_sigmask(signal.SIG_SETMASK,mask)

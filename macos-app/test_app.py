@@ -19,7 +19,7 @@ with tempfile.TemporaryDirectory() as td:
  assert '--youtube-cookies' in cmd and cmd[cmd.index('--max-res')+1]=='2160'
  plain=root/'a $(touch never).mp4'
  subprocess.run(['ffmpeg','-v','error','-f','lavfi','-i','color=c=blue:s=320x240:d=1','-c:v','libx264',str(plain)],check=True)
- backend=Path(os.environ.get('SHIYING_TEST_APP',str(ROOT.parent/'outputs/拾影视频下载器-1.5独立版.app')))/'Contents/Resources/runner.py'
+ backend=Path(os.environ.get('SHIYING_TEST_APP',str(ROOT.parent/'outputs/拾影视频下载器-1.5.1独立版.app')))/'Contents/Resources/runner.py'
  payload={'text':str(plain),'folder':str(root/'lib'),'mode':0,'cookies':'none'}
  r=subprocess.run([sys.executable,"-B",str(backend)],input=json.dumps(payload),capture_output=True,text=True,timeout=60)
  assert r.returncode==0,r.stdout+r.stderr
@@ -47,7 +47,8 @@ with tempfile.TemporaryDirectory() as td:
   if pidfile.exists():break
   time.sleep(.05)
  assert pidfile.exists()
- child=int(pidfile.read_text());p.terminate();p.wait(timeout=8)
+ child=int(pidfile.read_text());started=time.monotonic();p.terminate();p.wait(timeout=8)
+ assert time.monotonic()-started < 2, 'cancellation fell back to delayed SIGKILL'
  assert p.returncode==130,p.stdout.read()
  stat=subprocess.run(['ps','-p',str(child),'-o','stat='],capture_output=True,text=True).stdout.strip()
  assert not stat or stat.startswith('Z'),stat

@@ -16,7 +16,7 @@ class Shiying : Form {
     JavaScriptSerializer json=new JavaScriptSerializer(); Timer clipboard=new Timer();string lastClipboard="";
     [STAThread] static void Main(){Application.EnableVisualStyles();Application.Run(new Shiying());}
     public Shiying(){
-        Text="拾影视频下载器 1.5 · Windows 测试版";Width=930;Height=790;
+        Text="拾影视频下载器 1.5.1 · Windows 测试版";Width=930;Height=790;
         var panel=new TableLayoutPanel(){Dock=DockStyle.Fill,ColumnCount=1,RowCount=8,Padding=new Padding(12)};Controls.Add(panel);
         panel.Controls.Add(new Label(){Text="粘贴单作品链接或分享文字。运行环境已内置；语音模型首次使用自动下载。",AutoSize=true});
         input.Multiline=true;input.ScrollBars=ScrollBars.Vertical;input.Dock=DockStyle.Fill;input.Height=150;panel.Controls.Add(input);

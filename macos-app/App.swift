@@ -168,7 +168,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if wxPanel == nil {wxPanel=WxPanel(onLink:{[weak self] link in self?.addLinks([link])})}
         wxPanel?.show()
     }
-    @objc func about() {alert("拾影 · 视频下载器 1.5 测试版","为这台 Mac 构建，内置独立运行环境。支持链接队列、下载、转写与 OCR。\n第三方代码来源及许可见应用帮助。")}
+    @objc func about() {alert("拾影 · 视频下载器 1.5.1 测试版","为这台 Mac 构建，内置独立运行环境。支持链接队列、下载、转写与 OCR。\n第三方代码来源及许可见应用帮助。")}
     @objc func runTask() {
         guard task == nil else {return}
         guard !input.string.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else {alert("请先添加链接","也可以选择一个本地视频。");return}
