@@ -5,8 +5,7 @@
 
 ## 这是什么项目
 
-Apple Silicon macOS 上的视频下载 / 字幕 / 转写 / OCR 工具。原生 AppKit 界面 + Python 内核，
-依赖本机 `~/.vx` 运行环境（Python venv、FFmpeg、yt-dlp、`visionocr`）。
+macOS / Windows 视频下载、字幕、转写与 OCR 工具。Mac 使用 AppKit，Windows 使用 WinForms，共享 Python 内核。1.5 独立包内置运行环境，旧 1.4.1 才依赖 `~/.vx`。参见 `docs/INSTALL-1.5.md` 与 `docs/STANDALONE-1.5.md`。
 
 ```
 scripts/src/          内核主源码（唯一事实来源）
@@ -17,7 +16,7 @@ docs/                 使用、构建、验证说明
 
 ## 环境能做什么、不能做什么
 
-云端会话跑在 Linux 容器里。**以下事情在会话里做不到，别假装做到了：**
+先核对当前会话的实际主机。**如果当前是在没有 Mac / Windows 连接的 Linux 容器里，以下事情做不到，别假装做到了：**
 
 - 编译 Swift（无 `swiftc`）、构建 `.app`、Apple 公证、代码签名
 - 任何 GUI 操作
@@ -40,7 +39,7 @@ docs/                 使用、构建、验证说明
 ```
 1. cp scripts/src/新文件.py macos-app/backend/新文件.py
 2. macos-app/check_backend.py 的 FILES 元组加进去
-3. macos-app/build.py 的 shutil.copy 循环元组加进去
+3. 检查 packaging/build_macos.py 与 packaging/build_windows.py 的快照复制范围
 ```
 
 ### 2. `run_tests.py` 不编译 `App.swift`
