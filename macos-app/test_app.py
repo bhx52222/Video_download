@@ -40,7 +40,7 @@ with tempfile.TemporaryDirectory() as td:
  # Own test process tree: cancellation must stop descendants and return 130.
  fake=root/'fake.py';pidfile=root/'child.pid'
  fake.write_text('import subprocess,sys,time\np=subprocess.Popen([sys.executable,"-c","import time; time.sleep(120)"])\nopen('+repr(str(pidfile))+',"w").write(str(p.pid))\ntime.sleep(120)\n')
- boot=root/'boot.py';boot.write_text('import sys\nsys.path.insert(0,'+repr(str(ROOT))+')\nimport runner\nfrom pathlib import Path\nrunner.CORE=Path('+repr(str(fake))+')\nsys.exit(runner.main())\n')
+ boot=root/'boot.py';boot.write_text('import sys\nsys.path.insert(0,'+repr(str(backend.parent.resolve()))+')\nimport runner\nfrom pathlib import Path\nrunner.CORE=Path('+repr(str(fake))+')\nsys.exit(runner.main())\n')
  p=subprocess.Popen([sys.executable,str(boot)],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
  p.stdin.write(json.dumps({'text':'https://example.com/v','folder':str(root/'cancel'),'cookies':'none'}));p.stdin.close()
  for _ in range(100):

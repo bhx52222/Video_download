@@ -18,5 +18,5 @@ _UNMASK_EXEC = (
 def spawn(cmd, **kwargs):
     if os.name != 'nt':
         # The runner passes an absolute interpreter path; preserve argv verbatim.
-        cmd = [sys.executable, '-I', '-c', _UNMASK_EXEC, *cmd]
+        cmd = [sys.executable, '-I', '-B', '-c', _UNMASK_EXEC, *cmd]
     return subprocess.Popen(cmd, **kwargs)
