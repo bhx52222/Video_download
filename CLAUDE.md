@@ -87,3 +87,7 @@ docs/                 使用、构建、验证说明
 | `build.py` 缺连接组件 | 需要 `macos-app/external/wx_channels_download/wx_video_download`，不在 Git，用 `python3 scripts/fetch_wx_helper.py` 取 |
 | 测试用的解释器 | `run_tests.py` 用 `~/.vx/venv/bin/python`；`test_download_policy.py` 单独用 yt-dlp 工具环境的 python |
 | `outputs/` 和 `work/` | 构建产物，不提交 Git |
+
+## 最终文件存放约定
+
+唯一正式目录为 `/Users/beibei/Documents/GitHub/Video_download`。最终文档放 `docs/` 并维护 `docs/README.md`；发布产物放 `outputs/` 并上传 GitHub Release。临时文件使用仓库内 `work/`，验收后清理；不清理用户媒体、登录态或实际模型缓存。分支和构建入口见 `docs/PROJECT_STATUS.md`。

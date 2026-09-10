@@ -10,6 +10,8 @@ macOS / Windows 视频下载、字幕提取、语音转写和画面文字识别�
 
 旧 [v1.4.1 Release](https://github.com/bhx52222/Video_download/releases/tag/v1.4.1) 仍依赖外部环境；只有运行旧版或准备开发环境才需要阅读 [旧版环境说明](docs/ENVIRONMENT.md)。不要把旧版包和 1.5 安装说明混用。
 
+[项目文件与同步约定](docs/PROJECT_STATUS.md) · [文档索引](docs/README.md) · [历史踩坑记录](docs/PITFALLS.md)
+
 ## 使用
 
 1. Windows 双击 `Shiying-1.5.1-Windows-x64-Setup.exe` 安装；Mac 解压 `Shiying-1.5.1-macOS-arm64.zip` 后将完整 App 拖入“应用程序”。

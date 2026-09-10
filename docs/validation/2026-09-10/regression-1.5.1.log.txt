@@ -1,0 +1,181 @@
+
+Running scripts/test_capture_regression.py
+[捕获]    0.4 MB  video/mp4                http://127.0.0.1:55413/media.mp4?sig=old
+[捕获]    0.4 MB  video/mp4                http://127.0.0.1:55413/media.mp4?sig=new
+PASS HEAD 405 fallback, Range total size, refreshed signature
+PASS encrypted response rejected before media is accepted
+
+[1m▶ 直链 http://127.0.0.1:55413/media.mp4[0m
+  · 下载中…
+  · 下载完成 0.4 MB
+
+[1m▶ grab_c5294e0dd38dae1c546a.mp4[0m
+  · 复制进媒体库（0.4 MB）…
+  · 文件里有内嵌字幕轨，已导出 1 条：local.eng.srt
+  · 目录 kuaishou_grab_c5294e0dd38dae1c546a
+  · 媒体 grab_c5294e0dd38dae1c546a.mp4（0.4 MB）
+  ✓ 用人工字幕轨 local.eng.srt，不跑 ASR
+  ✓ 完成 → /private/var/folders/wt/1sm26g4x6vnc4gz2tkn60wn40000gn/T/tmpacpew9jm/library/kuaishou_grab_c5294e0dd38dae1c546a
+
+[1m── 小结 ──[0m
+  ok
+
+
+
+[1m▶ 直链 http://127.0.0.1:55413/media.mp4[0m
+  · 下载中…
+  · 下载完成 0.4 MB
+
+[1m▶ grab_c5294e0dd38dae1c546a.mp4[0m
+  ↷ 已完成过，跳过：kuaishou_grab_c5294e0dd38dae1c546a（要重跑加 --force）
+
+[1m── 小结 ──[0m
+  skipped
+
+
+PASS real HTTP download -> ffprobe -> embedded subtitles -> metadata/index/.done; repeated capture deduplicated
+
+Running scripts/test_download_policy.py
+  ↻ 带 cookie 时平台没给出可用格式，去掉 cookie 重试
+  ↻ 带 cookie 时平台没给出可用格式，去掉 cookie 重试
+PASS anonymous fallback propagates to cache/download, explicit YouTube cookie option
+PASS format selection: 1080 H264, 2160 VP9, HLS fallback respects known height cap
+
+Running scripts/test_github_adapters.py
+PASS TikWM identity, collection, API error, HTTPS and no-cookie contract
+PASS WeChat URL scope, uint64 preservation, credentials limited to Yuanbao, missing auth
+  · 视频号分享解析成功：Test
+  · 媒体头部不可读，使用对应 decodeKey 本地解码
+  · 视频媒体解码验收通过
+  · 视频号分享解析成功：Test
+  · 媒体头部不可读，使用对应 decodeKey 本地解码
+  ✗ 视频号提取失败：ValueError: 解码后的媒体未通过实际视频解码验收
+PASS ISAAC64 uint64 keys, encrypted prefix/tail, real MP4 decode, wrong-key rejection, temp cleanup
+
+[1m▶ https://www.tiktok.com/@test/video/123[0m
+  ↻ 使用 TikWM 第三方解析：只发送作品链接，不发送浏览器 Cookie
+  · 目录 tiktok_123
+  · 标题 test
+  ✓ dry-run：只写了 meta.json，未下载
+
+[1m── 小结 ──[0m
+  dry: 1
+  总表：/var/folders/wt/1sm26g4x6vnc4gz2tkn60wn40000gn/T/tmpsc0vl4dk/index.csv
+
+Running scripts/test_link_parse.py
+PASS vx_link：9 平台识别、作品ID提取、短链判定、抖音精选规范化、快手 /f/ 短链、中文标点剥离、去重、未知站兜底
+
+Running scripts/test_ocr_status.py
+  ! Vision OCR 退出码 1：test failure
+  ! Vision OCR 输出不是合法 JSON，这一批跳过
+  ! Vision OCR 返回结构无效，未完成识别
+  ! Vision OCR 缺少部分帧的结果，未完成识别
+  ! no audio，转入画面/OCR 处理
+  ↻ 旧派生结果已备份到 notes/_superseded/20260910-113739-081083
+  ! OCR 状态：failed，未产出有效字幕
+  ✓ 媒体归档完成，OCR 0 段、画面 1 张 → /var/folders/wt/1sm26g4x6vnc4gz2tkn60wn40000gn/T/tmp3owbfih6/item
+  ! no audio，转入画面/OCR 处理
+  ↻ 旧派生结果已备份到 notes/_superseded/20260910-113739-083130
+  ! OCR 状态：empty，未产出有效字幕
+  ✓ 媒体归档完成，OCR 0 段、画面 1 张 → /var/folders/wt/1sm26g4x6vnc4gz2tkn60wn40000gn/T/tmpnav92syc/item
+  ! no audio，转入画面/OCR 处理
+  ↻ 旧派生结果已备份到 notes/_superseded/20260910-113739-084893
+  ! OCR 状态：too_thin，未产出有效字幕
+  ✓ 媒体归档完成，OCR 0 段、画面 1 张 → /var/folders/wt/1sm26g4x6vnc4gz2tkn60wn40000gn/T/tmplj8d0lus/item
+  ! no audio，转入画面/OCR 处理
+  ✓ 媒体归档完成，OCR 1 段、画面 1 张 → /var/folders/wt/1sm26g4x6vnc4gz2tkn60wn40000gn/T/tmpxuba4uxh/item
+PASS OCR errors differ from empty/thin; visual branch suppresses invalid SRT; prior files recoverable
+  · 媒体 video.mp4（0.0 MB）
+  ↷ 字幕已存在（1 条），跳过转写
+  ↻ 旧派生结果已备份到 notes/_superseded/20260910-113739-088224
+  ! OCR 状态：failed，未完成双路互校，未产出硬字幕
+  ✓ 完成 → /var/folders/wt/1sm26g4x6vnc4gz2tkn60wn40000gn/T/tmp_salijof/item
+  · 媒体 video.mp4（0.0 MB）
+  ↷ 字幕已存在（1 条），跳过转写
+  ↻ 旧派生结果已备份到 notes/_superseded/20260910-113739-090094
+  ! OCR 状态：empty，未完成双路互校，未产出硬字幕
+  ✓ 完成 → /var/folders/wt/1sm26g4x6vnc4gz2tkn60wn40000gn/T/tmplakwkj55/item
+  · 媒体 video.mp4（0.0 MB）
+  ↷ 字幕已存在（1 条），跳过转写
+  ↻ 旧派生结果已备份到 notes/_superseded/20260910-113739-091968
+  ! OCR 状态：too_thin，未完成双路互校，未产出硬字幕
+  ✓ 完成 → /var/folders/wt/1sm26g4x6vnc4gz2tkn60wn40000gn/T/tmpcmxg06xg/item
+  · 媒体 video.mp4（0.0 MB）
+  ↷ 字幕已存在（1 条），跳过转写
+  ✓ 互校完成，相似度 1.000，报告在 notes/dual_check.md
+  ✓ 完成 → /var/folders/wt/1sm26g4x6vnc4gz2tkn60wn40000gn/T/tmp5su5wlru/item
+PASS dual OCR failure/empty/thin cannot retain success report or stale primary
+
+Running scripts/test_platforms.py
+PASS platform domains, short links, misleading URL rejection, language routing
+
+[1m── 小结 ──[0m
+  skipped: 11
+  failed: 1
+  总表：/var/folders/wt/1sm26g4x6vnc4gz2tkn60wn40000gn/T/tmpa66r2j1b/batch/index.csv
+PASS 12-item batch: dedup, comments, failure isolation, nonzero exit, JSON result
+PASS silent video: archived with frames, unavailable text honestly recorded
+
+Running scripts/test_process_cancel.py
+PASS parent and grandchild handled SIGTERM in 0.004s; no SIGKILL
+
+Running scripts/test_retry_and_redownload.py
+  ↻ 平台要求登录态才肯给数据，带 cookie 再试
+  ↻ 平台要求登录态才肯给数据，带 cookie 再试
+
+[1m▶ https://youtube.com/watch?v=sample[0m
+  · 目录 youtube_sample
+  · 标题 sample
+  ↻ 旧媒体已挪到 media/_replaced/20260910-113740-553814/a.mp4，将重新下载
+  ! 确认新文件没问题之后，_replaced 目录可以自己删掉
+  · 下载中…
+  ✗ 下载失败
+PASS bot fallback both quotes, none opt-out, throttle, inline comments, redownload with completion marker and failure backup
+
+Running macos-app/test_app.py
+PASS app local redownload bypasses completion marker and preserves old media
+PASS app bridge: share parsing, shell-safe paths, download-only -> later OCR completion
+PASS app cancellation stops subprocess group and reports cancelled
+
+Running macos-app/test_backend_sync.py
+test_stale_and_missing_sources_stop_build (__main__.SyncTests.test_stale_and_missing_sources_stop_build) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.011s
+
+OK
+
+Running macos-app/test_downie.py
+PASS Downie URL encoding, source binding, partial/html exclusion, real media validation and cancellation
+PASS auto fallback only after failure; source preserved; failed import remains failed
+
+Running macos-app/test_idm.py
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.002s
+
+OK
+
+Running macos-app/test_kuaishou.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.000s
+
+OK
+
+Running macos-app/test_wx_bridge.py
+test_bad_ids (__main__.Tests.test_bad_ids) ... ok
+test_disconnected_never_reads_history_or_shares (__main__.Tests.test_disconnected_never_reads_history_or_shares) ... ok
+test_empty_history_is_not_error (__main__.Tests.test_empty_history_is_not_error) ... ok
+test_http_select_and_resolve (__main__.Tests.test_http_select_and_resolve) ... ok
+test_invalid_status (__main__.Tests.test_invalid_status) ... ok
+test_no_system_mutation_config (__main__.Tests.test_no_system_mutation_config) ... ok
+test_wrong_identity_and_url (__main__.Tests.test_wrong_identity_and_url) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.523s
+
+OK
+PASS clipboard link parsing: platform allowlist, manual-paste fallback, punctuation parity, dedup, HTML escaping, card/credential rejection
+
+All regression scripts passed.
