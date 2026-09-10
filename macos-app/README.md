@@ -1,7 +1,7 @@
-# 原生 macOS App
+# 拾影 macOS App 1.5.1
 
-AppKit 界面与 Python 进程桥接。主源码在 `../scripts/src/`，`backend/` 为经审查同步的打包快照。
+AppKit 界面与 Python 进程桥接，面向 macOS 14+、Apple Silicon。App 内置运行环境，使用者无需配置 ~/.vx；构建机依赖与使用者要求分开说明。
 
-在仓库根目录运行 `python3 macos-app/build.py`；详细依赖、获取第三方组件和验证步骤见 [构建说明](../docs/BUILD.md)。
+在仓库根目录运行 `python3 packaging/build_macos.py`，输出 `outputs/拾影视频下载器-1.5.1独立版.app`。详见 [构建与验证](../docs/BUILD.md)、[安装说明](../docs/INSTALL-1.5.1.md)。
 
-当前版本 1.4.1 测试版，输出到 `../outputs/`。使用现有 `~/.vx` 环境，本地签名，未公证。现有能力、真实验收和限制以仓库根 README 及 docs 为准，不依赖历史交接文件。
+主源码在 `scripts/src/`，`backend/` 为经审查同步的快照。当前使用本地签名，未完成 Apple 公证。

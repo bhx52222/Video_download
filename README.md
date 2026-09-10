@@ -1,4 +1,4 @@
-# 拾影视频下载器
+# 拾影视频下载器 1.5.1
 
 macOS / Windows 视频下载、字幕提取、语音转写和画面文字识别工具。Mac 使用原生 AppKit 界面，Windows 使用 WinForms 界面，两者共享 Python 内核。
 
@@ -8,9 +8,10 @@ macOS / Windows 视频下载、字幕提取、语音转写和画面文字识别�
 - [本版改动、实测记录与未完成项目](docs/RELEASE-1.5.1.md)
 - [下载安装包：GitHub Release v1.5.1](https://github.com/bhx52222/Video_download/releases/tag/v1.5.1)
 
-旧 [v1.4.1 Release](https://github.com/bhx52222/Video_download/releases/tag/v1.4.1) 仍依赖外部环境；只有运行旧版或准备开发环境才需要阅读 [旧版环境说明](docs/ENVIRONMENT.md)。不要把旧版包和 1.5 安装说明混用。
 
-[项目文件与同步约定](docs/PROJECT_STATUS.md) · [文档索引](docs/README.md) · [历史踩坑记录](docs/PITFALLS.md)
+[项目文件与同步约定](docs/PROJECT_STATUS.md) · [文档索引](docs/README.md)
+
+开发与文档统一维护在默认分支 **main**。
 
 ## 使用
 
@@ -19,12 +20,12 @@ macOS / Windows 视频下载、字幕提取、语音转写和画面文字识别�
 3. 也可添加本地视频。重新下载保留旧媒体备份；取消停止拾影自身处理。
 4. 模型首次使用自动下载。需要登录的平台仍取决于浏览器登录态、网站风控与可用网络。
 
-[第三方组件](THIRD_PARTY_NOTICES.md) · [持续升级](docs/UPGRADE.md)
+[第三方组件](THIRD_PARTY_NOTICES.md)
 
 ## 当前能力
 
 - YouTube、Bilibili、抖音、小红书、微博、Instagram、X 等通过内核或相应适配器处理；作品可用性、登录态与风控会影响结果。
-- 快手：支持公开单作品页和分享短链接；1.4.1 新增公开页面解析，已真实下载指定样本并全片解码。
+- 快手：支持公开单作品页和分享短链接；包含公开页面解析；指定样本曾通过真实下载和全片解码，不代表所有作品。
 - YouTube：Mac 可选择 Downie 4；Windows 可选择 IDM。外部软件需自行安装授权，IDM 仅交接已经解析出的单文件媒体地址，不能视为 Downie 的同等页面解析器。
 - 视频号 `weixin.qq.com/sph/…` 分享链接与“只有卡片”的采集是两条不同路径。无链接采集窗口仍属试验功能，尚未完成真实端到端验收。
 - 优先已有字幕；没有字幕时可使用语音识别。OCR 失败、空结果、零散文字与有效识别分别记录，机器文字仍需核对。

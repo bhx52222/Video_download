@@ -1,44 +1,35 @@
-# 安装与构建
+# 拾影 1.5.1 构建与验证
 
-只想使用已下载的 App？请先阅读[面向使用者的环境配置说明](ENVIRONMENT.md)，不需要重新构建 App。
+普通使用者下载 [Release](https://github.com/bhx52222/Video_download/releases/tag/v1.5.1) 安装包即可，无需配置开发环境；见 [安装说明](INSTALL-1.5.1.md)。以下要求仅适用于构建机。
 
-## 条件
+## macOS
 
-macOS 14 或以上、Apple Silicon、Xcode Command Line Tools。App 是本地签名测试包，未公证。运行环境使用 `~/.vx/venv/bin/python`（Python 3.12）、FFmpeg、yt-dlp、可选 Vision OCR / ASR；其他电脑需要单独安装。
+需要 Apple Silicon、macOS 14+、Xcode Command Line Tools、已验证的 Python 3.12 环境和 FFmpeg、Deno 等工具。构建器默认读取 `~/.vx/venv/bin/python`，支持用 `SHIYING_BUILD_PYTHON` 指定解释器；会把运行依赖复制进 App。
 
-以下操作由使用者明确执行，不会自动修改系统代理、证书或登录态：
+开发环境安装入口为 `scripts/install_runtime.sh --asr`。视频号解码器用 `scripts/build_wx_decrypt.sh` 构建；视频号连接组件通过以下脚本获取固定版本并校验。
 
-```bash
-xcode-select --install
-brew install uv ffmpeg deno
-bash scripts/install_runtime.sh
-```
-
-需要语音转写时执行 `bash scripts/install_runtime.sh --asr`。ASR 安装与模型下载体积较大；依赖清单是安装入口，未宣称在全新 Mac 上完整验收。已有环境不需要为纯下载重装 ASR。
-
-视频号分享的可选本地解码器：安装 Go 后执行 `bash scripts/build_wx_decrypt.sh`。代码与 MIT 许可在 `scripts/src/vendor/wxdecrypt/`。
-
-## 构建 App
+在仓库根目录运行：
 
 ```bash
-# 下载固定版本的视频号连接组件并校验 SHA-256；不运行组件
 python3 scripts/fetch_wx_helper.py
 python3 macos-app/check_backend.py
-python3 macos-app/build.py
+python3 packaging/build_macos.py
+python3 packaging/verify_macos.py 'outputs/拾影视频下载器-1.5.1独立版.app'
+python3 scripts/run_tests.py
 ```
 
-输出 `outputs/拾影视频下载器-1.4.1测试版.app`。第三方连接组件的二进制不进入 Git，构建包保留其来源和许可证。构建需要该组件文件存在且哈希正确。
+构建会重建同名输出 App。验证实际包内运行环境和本地视频处理，并检查非系统绝对动态库依赖与签名。完整回归还编译 Swift 链接解析测试，不能代替 App 构建。
 
-修改内核时，以 `scripts/src/` 为主源码；审查差异后将五个模块及 vendor 同步到 `macos-app/backend/`。构建保护会检查这些文件，差异必须先解决。
+## Windows
 
-## 命令行与验证
+GitHub Actions 的 **Windows standalone installer** 工作流在 Windows 构建机执行 `python packaging/build_windows.py`。支持从 main 手动运行，相关源码变化也会触发。
 
-```bash
-~/.vx/venv/bin/python -B scripts/src/vx.py '视频链接' --download-only
-python3 -B scripts/run_tests.py
-codesign --verify --deep --strict 'outputs/拾影视频下载器-1.4.1测试版.app'
-```
+产物 `outputs/Shiying-1.5.1-Windows-x64-Setup.exe` 包含运行环境和应用目录内的 Visual C++ DLL。工作流实际安装到新目录，再执行包内 `smoke_windows.py` 和 GUI 启动检查。最终用户不需要安装开发环境。
 
-测试使用临时目录和合成样本，不需要重跑用户媒体库。App 测试需要先构建；部分内核测试需要安装 yt-dlp 的 Python 环境，运行器会使用 uv 的 yt-dlp 工具环境。网络真实样本的历史结果与模拟分支在 [VALIDATION.md](VALIDATION.md) 分开记录。
+## 发布检查
 
-频道研究辅助脚本 `20_channel_catalog.sh`、`21_channel_survey.sh` 保留为命令行工具，未整合 App；不会在构建或测试时自动遍历频道。
+- 主源码与 App 快照哈希一致。
+- 验证最终安装包，不把源码测试当成安装成功。
+- 分开记录本机实测、虚拟机实测、模拟分支和未完成事项。
+- 打包源码、安装说明、验收记录、依赖清单及 SHA-256，上传 Release 后核对远端摘要。
+- Apple 公证、Windows 发布者签名尚未配置；功能边界见 [验收说明](RELEASE-1.5.1.md)。

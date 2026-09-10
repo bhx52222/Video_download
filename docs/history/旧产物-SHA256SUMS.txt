@@ -1,2 +1,0 @@
-6560bd040cb7ec2d91609004bb9b949c5f40bb5610ba712bb5ed2b3040aa751b  Shiying-1.4.1-macOS-arm64.zip
-74279e7a44aa58c70fee4a05233c481e5ea044cd81a1cbb6f96eb59a17b071f1  Shiying-1.4.1-source.zip
