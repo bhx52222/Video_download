@@ -1,6 +1,11 @@
 name: Windows standalone installer
 on:
   workflow_dispatch:
+    inputs:
+      assemble:
+        description: Assemble validated release assets only
+        type: boolean
+        default: false
   push:
     branches: [claude/standalone-packaging]
     paths: ['windows-app/**', 'packaging/**', 'scripts/src/**', 'macos-app/**', '.github/workflows/windows-standalone.yml']
@@ -8,6 +13,7 @@ permissions:
   contents: read
 jobs:
   build:
+    if: ${{ !inputs.assemble }}
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -36,3 +42,29 @@ jobs:
         with:
           name: Shiying-Windows-x64-installer
           path: outputs/*Setup.exe
+
+  assemble:
+    if: ${{ inputs.assemble }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Shiying-Windows-x64-installer
+          run-id: 34433965008
+          github-token: ${{ github.token }}
+          path: assets
+      - name: Assemble and verify Mac archive; upload final installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: bhx52222/Video_download
+        run: |
+          test "$(gh release view v1.5.1 --json isDraft --jq .isDraft)" = true
+          gh release download v1.5.1 --pattern '*.part??' --dir parts
+          test "$(find parts -name '*.part??' | wc -l)" -eq 8
+          cat parts/Shiying-1.5.1-macOS-arm64.zip.part?? > assets/Shiying-1.5.1-macOS-arm64.zip
+          echo 'be47701ae139089caaa5429e13219e5ff16392c7061f454849af4b0a083511e4  assets/Shiying-1.5.1-macOS-arm64.zip' | sha256sum --check
+          gh release upload v1.5.1 assets/* --clobber
+          for part in parts/*; do gh release delete-asset v1.5.1 "$(basename "$part")" --yes; done
