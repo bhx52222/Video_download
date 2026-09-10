@@ -2,17 +2,17 @@
 
 macOS / Windows 视频下载、字幕提取、语音转写和画面文字识别工具。Mac 使用原生 AppKit 界面，Windows 使用 WinForms 界面，两者共享 Python 内核。
 
-**本开发分支：1.5 一体化测试包。** 内置 Python、FFmpeg、下载工具和识别依赖；使用者不需配置 `~/.vx`。语音模型首次使用联网下载，Downie 4 / IDM 不包含在包内。安装包尚未完成 Apple 公证或 Windows 发布者签名。
+**当前版本：1.5.1 一体化测试包。** 内置 Python、FFmpeg、下载工具和识别依赖；使用者不需配置 `~/.vx`。语音模型首次使用联网下载，Downie 4 / IDM 不包含在包内。安装包尚未完成 Apple 公证或 Windows 发布者签名。
 
-- [1.5 安装与使用](docs/INSTALL-1.5.md)
-- [实测记录与未完成项目](docs/STANDALONE-1.5.md)
-- [Windows EXE 构建产物](https://github.com/bhx52222/Video_download/actions/runs/34324643861)（在 Artifacts 下载，需 GitHub 登录；有保存期限）
+- [1.5.1 安装与使用](docs/INSTALL-1.5.1.md)
+- [本版改动、实测记录与未完成项目](docs/RELEASE-1.5.1.md)
+- [下载安装包：GitHub Release v1.5.1](https://github.com/bhx52222/Video_download/releases/tag/v1.5.1)
 
 旧 [v1.4.1 Release](https://github.com/bhx52222/Video_download/releases/tag/v1.4.1) 仍依赖外部环境；只有运行旧版或准备开发环境才需要阅读 [旧版环境说明](docs/ENVIRONMENT.md)。不要把旧版包和 1.5 安装说明混用。
 
 ## 使用
 
-1. Windows 双击 `Shiying-1.5-Windows-x64-Setup.exe` 安装；Mac 解压 `Shiying-1.5-macOS-arm64.zip` 后将完整 App 拖入“应用程序”。
+1. Windows 双击 `Shiying-1.5.1-Windows-x64-Setup.exe` 安装；Mac 解压 `Shiying-1.5.1-macOS-arm64.zip` 后将完整 App 拖入“应用程序”。
 2. 打开拾影，粘贴单个作品链接或分享文字，选择处理方式和保存目录后开始。默认只下载，默认媒体库为用户目录下的 `VideoExtract`。
 3. 也可添加本地视频。重新下载保留旧媒体备份；取消停止拾影自身处理。
 4. 模型首次使用自动下载。需要登录的平台仍取决于浏览器登录态、网站风控与可用网络。

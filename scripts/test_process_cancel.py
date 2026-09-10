@@ -24,13 +24,13 @@ def stop(*_):
     raise SystemExit(0)
 signal.signal(signal.SIGTERM,stop)
 if role=='parent':
-    subprocess.Popen([sys.executable,__file__,str(root),'grandchild'])
+    subprocess.Popen([sys.executable,"-B",__file__,str(root),'grandchild'])
 (root/(role+'.ready')).touch()
 while True: time.sleep(.05)
 ''')
     mask=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGTERM,signal.SIGINT})
     try:
-        p=spawn([sys.executable,str(script),str(root),'parent'],start_new_session=True)
+        p=spawn([sys.executable,"-B",str(script),str(root),'parent'],start_new_session=True)
     finally:
         signal.pthread_sigmask(signal.SIG_SETMASK,mask)
     try:
