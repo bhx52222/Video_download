@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_APP = ROOT / 'outputs/拾影视频下载器-1.4.1测试版.app'
+DEFAULT_APP = ROOT / 'outputs/拾影视频下载器-1.5.1独立版.app'
 
 # 每条都是改动前会出错的真实形态。
 # (输入, 期望队列, 这条在验什么)
