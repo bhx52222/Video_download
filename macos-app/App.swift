@@ -24,6 +24,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var outputPipe: Pipe?
     var cancelRequested = false
     var pendingOutput = Data()
+    var probing = false
+    var probeResult = ""
+    static let playlistMarker = "@@VX_PLAYLISTS@@"
 
     func label(_ text: String, size: CGFloat = 13, bold: Bool = false) -> NSTextField {
         let v = NSTextField(labelWithString: text)
@@ -93,6 +96,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     func consume(_ data: Data, final: Bool = false) {
         pendingOutput.append(data)
+        if probing {
+            // 清单 JSON 是一整行，不进日志；其余进度照常显示。
+            guard let last=final ? pendingOutput.indices.last : pendingOutput.lastIndex(of:10) else {return}
+            let end=pendingOutput.index(after:last)
+            for line in String(decoding:pendingOutput[..<end],as:UTF8.self).components(separatedBy:"\n") where !line.isEmpty {
+                if line.hasPrefix(Self.playlistMarker) {probeResult=String(line.dropFirst(Self.playlistMarker.count))}
+                else {append(line+"\n")}
+            }
+            pendingOutput.removeSubrange(..<end);return
+        }
         if final {append(String(decoding:pendingOutput,as:UTF8.self));pendingOutput.removeAll();return}
         if let last=pendingOutput.lastIndex(of:10) {
             let end=pendingOutput.index(after:last)
@@ -169,19 +182,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         wxPanel?.show()
     }
     @objc func about() {alert("拾影 · 视频下载器 1.5.1 测试版","为这台 Mac 构建，内置独立运行环境。支持链接队列、下载、转写与 OCR。\n第三方代码来源及许可见应用帮助。")}
+    /// 两段式：先让内核判断哪些是列表（普通单条不联网，几乎立刻结束），问完用户再真正开始。
     @objc func runTask() {
         guard task == nil else {return}
         guard !input.string.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else {alert("请先添加链接","也可以选择一个本地视频。");return}
+        logView.string="";probeResult=""
+        launch(["action":"probe","text":input.string,"cookies":selectedCookies(),"youtube_cookies":youtubeCookies.state == .on],probing:true,status:"正在识别链接…")
+    }
+    func selectedCookies() -> String {return ["edge,chrome","chrome,edge","edge","chrome","none"][cookie.indexOfSelectedItem]}
+    func finishProbe() {
+        let found=(try? JSONSerialization.jsonObject(with:Data(probeResult.utf8))) as? [[String:Any]] ?? []
+        var chosen=[[String:Any]]()
+        for info in found {
+            guard let selection=PlaylistPicker.ask(info,window:window) else {
+                status.stringValue="已取消";append("已取消，没有下载任何内容。\n");return
+            }
+            chosen.append(selection)
+        }
+        handoffToken=UUID().uuidString
+        launch(["youtube_backend":["core","auto","downie"][youtubeBackend.indexOfSelectedItem],"handoff_token":handoffToken,"text":input.string,"folder":folder.path,"mode":mode.indexOfSelectedItem,"cookies":selectedCookies(),"language":["auto","zh","en"][language.indexOfSelectedItem],"tiktok":fallback.state == .on ? "tikwm" : "direct","force":force.state == .on,"redownload":redownload.state == .on,"max_res":[1080,720,2160][quality.indexOfSelectedItem],"youtube_cookies":youtubeCookies.state == .on,"playlists":chosen],probing:false,status:"正在处理…")
+    }
+    func launch(_ payload:[String:Any],probing isProbe:Bool,status text:String) {
         let python=Bundle.main.resourceURL!.appendingPathComponent("runtime/bin/python3")
         guard FileManager.default.isExecutableFile(atPath:python.path),let runner=Bundle.main.url(forResource:"runner",withExtension:"py") else {alert("处理环境不可用","安装包内运行环境缺失，请重新下载完整安装包。");return}
-        let cookies=["edge,chrome","chrome,edge","edge","chrome","none"]
-        handoffToken=UUID().uuidString
-        let payload:[String:Any]=["youtube_backend":["core","auto","downie"][youtubeBackend.indexOfSelectedItem],"handoff_token":handoffToken,"text":input.string,"folder":folder.path,"mode":mode.indexOfSelectedItem,"cookies":cookies[cookie.indexOfSelectedItem],"language":["auto","zh","en"][language.indexOfSelectedItem],"tiktok":fallback.state == .on ? "tikwm" : "direct","force":force.state == .on,"redownload":redownload.state == .on,"max_res":[1080,720,2160][quality.indexOfSelectedItem],"youtube_cookies":youtubeCookies.state == .on]
         let p=Process(), stdin=Pipe(), stdout=Pipe();p.executableURL=python;p.arguments=["-B","-u",runner.path]
         var env=ProcessInfo.processInfo.environment;let home=FileManager.default.homeDirectoryForCurrentUser.path
         env["PATH"]="/usr/bin:/bin:/usr/sbin:/sbin";env["PYTHONUNBUFFERED"]="1";env["PYTHONDONTWRITEBYTECODE"]="1";env["LANG"]="en_US.UTF-8"
         p.environment=env;p.standardInput=stdin;p.standardOutput=stdout;p.standardError=stdout
-        outputPipe=stdout;cancelRequested=false;logView.string="";pendingOutput.removeAll()
+        outputPipe=stdout;cancelRequested=false;probing=isProbe;pendingOutput.removeAll()
         stdout.fileHandleForReading.readabilityHandler={handle in let data=handle.availableData;if !data.isEmpty {DispatchQueue.main.async {self.consume(data)}}}
         p.terminationHandler={process in
             stdout.fileHandleForReading.readabilityHandler=nil
@@ -189,11 +217,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             DispatchQueue.main.async {
                 self.consume(remaining,final:true)
                 self.task=nil;self.outputPipe=nil;self.start.isEnabled=true;self.cancel.isEnabled=false;self.progress.stopAnimation(nil)
+                if isProbe && !self.cancelRequested {self.probing=false;self.finishProbe();return}
+                self.probing=false
                 self.status.stringValue=self.cancelRequested ? "已取消" : (process.terminationStatus == 0 ? "处理完成" : "部分任务失败，请查看日志")
             }
         }
         do {
-            task=p;try p.run();start.isEnabled=false;cancel.isEnabled=true;progress.startAnimation(nil);status.stringValue="正在处理…"
+            task=p;try p.run();start.isEnabled=false;cancel.isEnabled=true;progress.startAnimation(nil);status.stringValue=text
             let data=try JSONSerialization.data(withJSONObject:payload);stdin.fileHandleForWriting.write(data);try stdin.fileHandleForWriting.close()
         }catch{task=nil;stdout.fileHandleForReading.readabilityHandler=nil;alert("无法启动",error.localizedDescription)}
     }

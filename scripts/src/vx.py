@@ -33,6 +33,7 @@ except Exception:
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from vx_runtime import configure
 configure()
+import vx_playlist
 VXHOME = Path(os.environ.get("VX_HOME", str(Path.home() / ".vx")))
 DEFAULT_LIB = Path(os.environ.get("VX_LIB", str(Path.home() / "VideoExtract")))
 VISIONOCR = Path(os.environ.get("VX_BIN", str(VXHOME / "bin"))) / ("visionocr.py" if os.name == "nt" else "visionocr")
@@ -415,11 +416,11 @@ def build_format_selector(max_res=1080):
             f"/bv*{cap}+ba/b{cap}")
 
 
-def download(url, outdir, browser, want_subs=True, max_res=1080, force_cookies=False):
+def download(url, outdir, browser, want_subs=True, max_res=1080, force_cookies=False, name_prefix=""):
     """视频和字幕分开下。合在一起的话，YouTube 字幕接口一个 429
     会让 yt-dlp 整体返回非零，视频明明下好了也被判成失败。
     字幕拿不到只是降级到 ASR，不是致命错误。"""
-    tpl = str(outdir / "media" / "%(id)s.%(ext)s")
+    tpl = str(outdir / "media" / f"{name_prefix}%(id)s.%(ext)s")
     if want_subs:
         ensure_subs(url, outdir, browser, force_cookies=force_cookies)
 
@@ -970,6 +971,8 @@ def append_index(lib, meta, outdir):
         "dual_check": (meta["text"] or {}).get("dual_check"),
         "evidence": (meta["capture"] or {}).get("evidence"),
         "captured_at": (meta["capture"] or {}).get("at"), "url": meta["url"],
+        "playlist_id": (meta.get("playlist") or {}).get("id"),
+        "playlist_index": (meta.get("playlist") or {}).get("index"),
     }
     rows = []
     if idx.exists():
@@ -1696,7 +1699,7 @@ def process(url, args):
         return "failed"
 
     if raw.get("_type") in ("playlist", "multi_video") or raw.get("entries"):
-        log("该链接包含多个作品或轮播视频。请将各条视频链接放入 -f 清单逐条处理。", "!")
+        log("该链接是播放列表或合集。查看清单：vx <链接> --playlist-show；下载：--playlist all 或 --playlist 1,3-5。", "!")
         return "unsupported_collection"
 
     meta = build_meta(url, raw, platform,
@@ -1724,6 +1727,10 @@ def process(url, args):
     outdir = lib / slug
     for sub in ("media", "subs", "frames", "notes"):
         (outdir / sub).mkdir(parents=True, exist_ok=True)
+    item = getattr(args, "playlist_item", None)
+    if item:
+        item["outdir"] = str(outdir)
+        meta["playlist"] = {k: item[k] for k in ("id", "title", "url", "index", "total")}
 
     if (outdir / ".done").exists() and not args.force and not getattr(args, "redownload", False) and not args.dry_run:
         log(f"已完成过，跳过：{slug}（要重跑加 --force）", "↷")
@@ -1780,13 +1787,16 @@ def process(url, args):
                 log("改试 yt-dlp", "↻")
         if find_media(outdir) is None:
             log("下载中…")
-            if not download(url, outdir, br, want_subs=not getattr(args, "download_only", False), max_res=getattr(args, "max_res", 1080), force_cookies=force_ck):
+            if not download(url, outdir, br, want_subs=not getattr(args, "download_only", False), max_res=getattr(args, "max_res", 1080), force_cookies=force_ck, name_prefix=item["prefix"] if item else ""):
                 log("下载失败", "✗")
                 return "failed"
         video = find_media(outdir)
     if video is None:
         log("下载后找不到媒体文件", "✗")
         return "failed"
+    if item and not video.name.startswith(item["prefix"]):
+        # 这条以前按单条下载过：复用媒体，只补上列表序号。
+        video = video.rename(video.with_name(item["prefix"] + re.sub(r"^\d+_", "", video.name)))
     return finish_pipeline(url, meta, outdir, video, args, lib)
 
 # ---------------------------------------------------------------- 入口
@@ -1848,6 +1858,10 @@ def main():
     ap.add_argument("--tool", help="采集工具，写进 meta.capture.tool")
     ap.add_argument("--sleep", type=float, default=3, help="批量条目之间的等待秒数，默认 3")
     ap.add_argument("--dry-run", action="store_true", help="只探元数据不下载")
+    ap.add_argument("--playlist-show", action="store_true", help="只列出播放列表或合集的标题清单，不下载")
+    ap.add_argument("--playlist", metavar="all|1,3-5",
+                    help="按列表下载：all 或序号。序号命名、写 index.csv、断点续跑；选中 5 条及以上走批量档")
+    ap.add_argument("--playlist-job", metavar="job.json", help="执行 App 生成的列表任务文件")
     args = ap.parse_args()
     global YOUTUBE_COOKIES
     YOUTUBE_COOKIES = bool(getattr(args, "youtube_cookies", False))
@@ -1859,18 +1873,51 @@ def main():
     urls = list(args.targets)
     if args.file:
         urls += parse_target_list(Path(args.file).read_text(encoding="utf-8"))
+    if args.playlist_show:
+        browser = browser_list(args.cookies)[0]
+        for u in urls:
+            info = vx_playlist.probe(u, globals(), browser)
+            print(vx_playlist.describe(info) if info else f"不是列表，或读取不到清单，按单条处理：{u}")
+        raise SystemExit(0)
     if args.media_url:
         lib = Path(args.lib).expanduser(); lib.mkdir(parents=True, exist_ok=True)
         r = process_media_url(args, lib)
         print(f"\n\033[1m── 小结 ──\033[0m\n  {r}")
         raise SystemExit(0 if r in ("ok", "skipped", "dry") else 1)
-    if not urls:
+    if not urls and not args.playlist_job:
         ap.print_help(); raise SystemExit(0)
 
     Path(args.lib).expanduser().mkdir(parents=True, exist_ok=True)
     urls = list(dict.fromkeys(urls))
     tally = {}
     results = []
+    jobs = []
+    if args.playlist_job:
+        jobs.append(Path(args.playlist_job))
+    if args.playlist:
+        browser = browser_list(args.cookies)[0]
+        singles = []
+        for u in urls:
+            info = vx_playlist.probe(u, globals(), browser)
+            if not info:
+                log(f"不是列表，或读取不到清单，按单条处理：{u}", "!")
+                singles.append(u)
+                continue
+            try:
+                selected = vx_playlist.parse_selection(args.playlist, info["entries"])
+            except ValueError as e:
+                ap.error(str(e))
+            jobs.append(vx_playlist.write_job(info, selected, args.lib, safe))
+        urls = singles
+    for job_path in jobs:
+        job = json.loads(job_path.read_text(encoding="utf-8"))
+        job["_work"] = str(job_path.parent)
+        try:
+            for item in vx_playlist.run_job(job, args, process, find_media, log):
+                tally[item["result"]] = tally.get(item["result"], 0) + 1
+                results.append(item)
+        except KeyboardInterrupt:
+            print("\n中断。已完成的条目下次会自动跳过。"); raise SystemExit(130)
     for i, u in enumerate(urls):
         if i and args.sleep:
             time.sleep(args.sleep)
@@ -1892,6 +1939,9 @@ def main():
     run_dir.mkdir(parents=True, exist_ok=True)
     report = run_dir / (datetime.now().strftime("%Y%m%d-%H%M%S-%f") + ".json")
     report.write_text(json.dumps({"tally": tally, "items": results}, ensure_ascii=False, indent=2), encoding="utf-8")
+    # 3＝全部都是“这是列表”：App 据此提示用户，而不是把列表链接再交给外部下载器。
+    if results and all(r["result"] == "unsupported_collection" for r in results):
+        raise SystemExit(3)
     raise SystemExit(1 if any(r["result"] not in ("ok", "skipped", "dry") for r in results) else 0)
 
 if __name__ == "__main__":

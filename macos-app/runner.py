@@ -8,6 +8,7 @@ BACKEND = Path(__file__).resolve().parent / 'backend'
 # 尾部的 ？】》… 会被吃进 URL，结果是 CLI 能下、App 下不了。
 sys.path.insert(0, str(BACKEND))
 import vx_link
+import vx_playlist
 from vx_process import spawn
 from vx_runtime import configure
 configure(Path(__file__).resolve().parent)
@@ -51,8 +52,35 @@ def targets(text):
         found.extend(link.url for link in vx_link.parse_text(line))
     return list(dict.fromkeys(found))
 
-def command(url, config):
-    cmd=[sys.executable, '-X', 'utf8', '-B', '-u', str(CORE), url, '--lib', str(Path(config['folder']).expanduser()),
+def probe_action(config):
+    """只回答“输入里哪些是列表”，不下载。查不出来按单条走，所以这里永远不算失败。"""
+    # 查询是只读的：取消时直接退出，不必等 yt-dlp 跑完。
+    signal.signal(signal.SIGTERM,lambda *_:os._exit(130));signal.signal(signal.SIGINT,lambda *_:os._exit(130))
+    urls=vx_playlist.to_probe(targets(config.get('text','')))
+    found=[]
+    if urls:
+        core=runpy.run_path(str(CORE))
+        core['run'].__globals__['YOUTUBE_COOKIES']=bool(config.get('youtube_cookies'))
+        browser=core['browser_list'](config.get('cookies','none'))[0]
+        for url in urls:
+            print('正在读取列表清单：'+url,flush=True)
+            try:info=vx_playlist.probe(url,core,browser)
+            except Exception as e:
+                print(f'读取清单失败，按单条处理：{type(e).__name__}: {e}',flush=True);continue
+            if info:found.append(info)
+    print(vx_playlist.MARKER+json.dumps(found,ensure_ascii=False),flush=True)
+    return 0
+
+def resolve_selection(url,selections):
+    """返回 (实际要跑的单条链接, 列表信息)，两者只有一个有值；都没有表示跳过。"""
+    chosen=selections.get(url)
+    if not chosen:return url,None
+    if chosen.get('choice')=='single':return chosen.get('current_url'),None
+    return None,chosen
+
+def command(url, config, job=None):
+    target=['--playlist-job',str(job)] if job else [url]
+    cmd=[sys.executable, '-X', 'utf8', '-B', '-u', str(CORE), *target, '--lib', str(Path(config['folder']).expanduser()),
          '--cookies', config.get('cookies','edge,chrome'), '--tiktok-backend',config.get('tiktok','direct')]
     max_res=int(config.get('max_res',1080))
     if max_res not in (720,1080,2160):raise ValueError('无效画质选项')
@@ -71,10 +99,12 @@ def main():
     global child
     signal.signal(signal.SIGTERM,stop);signal.signal(signal.SIGINT,stop)
     config=json.load(sys.stdin)
+    if config.get('action')=='probe':return probe_action(config)
     if config.get('youtube_backend','core') not in ('core','auto','downie','idm'):raise ValueError('无效 YouTube 下载方式')
     if config.get('tiktok','direct') not in ('direct','auto','tikwm'):raise ValueError('无效 TikTok 模式')
     if config.get('cookies','edge,chrome') not in ('edge,chrome','chrome,edge','edge','chrome','none'):raise ValueError('无效浏览器选项')
     queue=targets(config.get('text',''))
+    selections={item['source_url']:item for item in config.get('playlists',[])}
     if not queue:print('没有找到有效链接或本地文件。',flush=True);return 2
     folder=Path(config['folder']).expanduser();folder.mkdir(parents=True,exist_ok=True)
     if not CORE.exists():print('App 内核文件缺失。',flush=True);return 2
@@ -96,8 +126,12 @@ def main():
         code=child.wait();child=None
         return code
 
-    for index,url in enumerate(queue,1):
+    for index,source in enumerate(queue,1):
         if cancelled:break
+        url,playlist=resolve_selection(source,selections)
+        if not url and not playlist:
+            print(f'跳过：{source}（列表里没有当前视频）',flush=True);failed+=1;continue
+        url=url or source
         platform=policy.get('platform_of',lambda u:'unknown')(url)
         gap=policy.get('PLATFORM_MIN_GAP',{}).get(platform,policy.get('DEFAULT_MIN_GAP',1.5))
         deadline=previous.get(platform,0)+gap
@@ -105,8 +139,24 @@ def main():
         while not cancelled and time.monotonic()<deadline:time.sleep(max(0,min(.1,deadline-time.monotonic())))
         if cancelled:break
         print(f'\n━━ 任务 {index}/{len(queue)} ━━\n{url}',flush=True)
+        if playlist:
+            # 列表走内核：序号、断点和总表都在内核里，外部下载器接不上这一套。
+            job=vx_playlist.write_job(playlist,playlist['selected'],folder,policy['safe'])
+            code=execute(command(url,config,job))
+            previous[platform]=time.monotonic()
+            if cancelled:break
+            # 小结按视频计数，不把整个列表算成一条。
+            rows=vx_playlist.read_index(job.parent/'index.csv')
+            chosen=playlist['selected']
+            done=sum(rows.get(i,{}).get('status') in vx_playlist.DONE_STATUSES for i in chosen) if rows else (len(chosen) if code==0 else 0)
+            ok+=done;failed+=len(chosen)-done
+            continue
         backend=config.get('youtube_backend','core') if downie_bridge.youtube_url(url) else 'core'
         code=1 if backend in ('downie','idm') else execute(command(url,config))
+        if code==3:
+            # 这是列表而不是下载失败，转给 Downie/IDM 只会白等 10 分钟。
+            print('这个链接是列表或合集，没有转交外部下载器。',flush=True)
+            backend='core'
         if os.name == 'nt' and code and backend in ('auto','idm') and not cancelled:
             import idm_bridge
             try:

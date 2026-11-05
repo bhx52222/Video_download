@@ -71,6 +71,7 @@ class Link:
     route: str = ""               # 该走哪条路
     expanded_from: str | None = None
     warnings: list = field(default_factory=list)
+    playlist_id: str | None = None  # YouTube 的 list= 参数；有它不代表用户想下整个列表
 
 
 # ready         能直接跑
@@ -173,6 +174,14 @@ def video_id_of(url, platform):
     return None
 
 
+def playlist_id_of(url, platform):
+    """YouTube 的 watch?v=…&list=… 和 /playlist?list=… 都把列表放在 list= 里。
+    只认 YouTube：其他平台的 list 参数没有这个含义。"""
+    if platform != "youtube":
+        return None
+    return (parse_qs(urlsplit(url).query).get("list") or [None])[0]
+
+
 def canonical_url(url, platform, video_id):
     """还原成平台自己（和 yt-dlp）最认的那种形态。
 
@@ -247,6 +256,7 @@ def classify(url, expanded_from=None):
     link = Link(raw=expanded_from or url, url=url, platform=platform,
                 expanded_from=expanded_from)
     link.video_id = video_id_of(url, platform)
+    link.playlist_id = playlist_id_of(url, platform)
     canon = canonical_url(url, platform, link.video_id)
     if canon != url:
         link.warnings.append(f"已规范化：原链接是 {url[:70]}")
@@ -376,6 +386,8 @@ def main(argv):
         print(f"    平台     {l.platform}")
         if l.video_id:
             print(f"    作品 ID  {l.video_id}")
+        if l.playlist_id:
+            print(f"    列表 ID  {l.playlist_id}（可用 vx <链接> --playlist-show 查看清单）")
         print(f"    链接     {l.url[:110]}")
         if l.expanded_from:
             print(f"    展开自   {l.expanded_from}")
