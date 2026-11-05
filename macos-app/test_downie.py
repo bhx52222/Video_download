@@ -35,3 +35,36 @@ for codes,expected_handoffs in [([1,0],1),([0],0),([1,1],1)]:
    cmd=processes[-1];assert cmd[cmd.index('--source-url')+1]==payload['text']
    assert cmd[cmd.index('--tool')+1]=='Downie 4'
 print('PASS auto fallback only after failure; source preserved; failed import remains failed')
+
+# 列表链接（内核退出码 3）不是下载失败，不能转交 Downie；列表选择按所选方式路由。
+for selections,codes,expect_cmd in [
+  ({},[3],'https://www.youtube.com/playlist?list=L'),
+  ({'https://www.youtube.com/playlist?list=L':{'source_url':'https://www.youtube.com/playlist?list=L','choice':'single','current_url':'https://www.youtube.com/watch?v=a'}},[0],'https://www.youtube.com/watch?v=a'),
+]:
+ with tempfile.TemporaryDirectory() as td:
+  processes=[]
+  class Process:
+   def __init__(self,*a,**kw):
+    self.stdout=io.StringIO('');self.code=codes[len(processes)];processes.append(a[0])
+   def wait(self):return self.code
+  payload={'text':'https://www.youtube.com/playlist?list=L','folder':td,'youtube_backend':'auto','handoff_token':'nonce','playlists':list(selections.values())}
+  r.cancelled=False
+  with patch.object(sys,'stdin',io.StringIO(json.dumps(payload))),patch.object(r.subprocess,'Popen',Process),patch.object(d,'wait_media') as wait,patch.object(d,'make_job') as make,contextlib.redirect_stdout(io.StringIO()):
+   result=r.main()
+  assert not make.called and not wait.called,'列表不能转交 Downie'
+  assert expect_cmd in processes[0],processes[0]
+  assert result==(1 if codes[0] else 0)
+with tempfile.TemporaryDirectory() as td:
+ processes=[]
+ class Process:
+  def __init__(self,*a,**kw):self.stdout=io.StringIO('');processes.append(a[0])
+  def wait(self):return 0
+ entry={'index':1,'id':'a','title':'t','duration':1,'url':'https://www.youtube.com/watch?v=a','unavailable':False}
+ playlist={'source_url':'https://www.youtube.com/playlist?list=L','platform':'youtube','id':'L','title':'T','uploader':'U','count':1,'entries':[entry],'choice':'all','selected':[1]}
+ payload={'text':playlist['source_url'],'folder':td,'youtube_backend':'downie','handoff_token':'nonce','playlists':[playlist]}
+ r.cancelled=False
+ with patch.object(sys,'stdin',io.StringIO(json.dumps(payload))),patch.object(r.subprocess,'Popen',Process),patch.object(d,'make_job') as make,contextlib.redirect_stdout(io.StringIO()):
+  assert r.main()==0
+ assert not make.called and '--playlist-job' in processes[0]
+ assert Path(processes[0][processes[0].index('--playlist-job')+1]).name=='job.json'
+print('PASS collection never handed to Downie; single/all selections routed through the core')

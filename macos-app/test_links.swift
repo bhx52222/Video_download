@@ -24,6 +24,9 @@ import Foundation
   assert(LinkTools.extractAny("没有网址的一段话").isEmpty)
   assert(LinkTools.unknownPlatform(["https://vimeo.com/1", "https://youtu.be/x"]) == ["https://vimeo.com/1"])
 
+  // ── 列表链接不能被截断：list= 和 index= 都要原样进内核判断 ──
+  assert(LinkTools.extract("https://www.youtube.com/watch?v=a&list=PLx&index=10") == ["https://www.youtube.com/watch?v=a&list=PLx&index=10"])
+
   print("PASS clipboard link parsing: platform allowlist, manual-paste fallback, punctuation parity, dedup, HTML escaping, card/credential rejection")
  }
 }

@@ -67,7 +67,7 @@ for name in ('visionocr','vx-wx-decrypt'):
 (tools/'yt-dlp').write_text('#!/bin/bash\nexec "$(dirname "$0")/../runtime/bin/python3" -B -m yt_dlp "$@"\n');(tools/'yt-dlp').chmod(0o755)
 # Strip build-host-specific paths from distributable manifest.
 (R/'runtime-manifest.json').write_text(json.dumps([{k:v for k,v in x.items() if k!='build_source'} for x in mapping],indent=2))
-subprocess.run(['xcrun','swiftc','-swift-version','5','-target','arm64-apple-macos14.0','-O','-framework','AppKit',*[str(ROOT/'macos-app'/n) for n in ('App.swift','LinkTools.swift','WxPanel.swift')],'-o',str(M/'Shiying')],check=True)
+subprocess.run(['xcrun','swiftc','-swift-version','5','-target','arm64-apple-macos14.0','-O','-framework','AppKit',*[str(ROOT/'macos-app'/n) for n in ('App.swift','LinkTools.swift','WxPanel.swift','PlaylistPicker.swift')],'-o',str(M/'Shiying')],check=True)
 icon=ROOT/'work/macos-icon';icon.mkdir(parents=True,exist_ok=True)
 subprocess.run(['xcrun','swiftc','-framework','AppKit',str(ROOT/'macos-app/Icon.swift'),'-o',str(icon/'builder')],check=True)
 subprocess.run([str(icon/'builder'),str(icon/'App.iconset')],check=True)
